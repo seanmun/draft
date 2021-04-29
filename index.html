@@ -4,8 +4,7 @@
     <title>Mel Kiper</title>
     <link rel="icon" href="https://upload.wikimedia.org/wikipedia/en/thumb/8/80/NFL_Draft_logo.svg/1200px-NFL_Draft_logo.svg.png">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-    <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet">
+    <<link href="https://fonts.googleapis.com/css2?family=Zen+Dots&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.6/handlebars.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/underscore@1.11.0/underscore-min.js"></script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,7 +16,7 @@
         <div class="row text-center">
             <div class="col-lg-10 offset-lg-1">
                 <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/80/NFL_Draft_logo.svg/1200px-NFL_Draft_logo.svg.png" width="150">
-                <h1 class="logo mb-2">NFL Draft 2021<br>
+                <h1 class="logo">NFL Draft 2021<br>
                     Confidence Pool
                 </h1>
                 <p style="color:red;font-weight:bold;">LIVE!</p>
@@ -30,10 +29,10 @@
                     <div class="category">
                         <h3 class="mb-4 mt-2">{{@key}}</h3>
                             {{#each this as |team|}}
-                                    <div class="row" style="border:1px solid black;margin: 0.3em auto;">
+                                    <div class="row" style="border:1px solid #ffffff;margin: 0.3em auto;background-color: #ffffff;border-radius: 5px;">
                                         <div class="name col-3" >{{team.team}}</div>
                                     <div class="price col-3">
-                                        <div style="background-color:blue;text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;{{team.points}}</div>
+                                        <div style="background: rgb(57,194,186);background: linear-gradient(329deg, rgba(57,194,186,1) 0%, rgba(0,115,159,1) 50%);;text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;{{team.points}}</div>
                                     </div>
                                     </div>
                             {{/each}}
@@ -42,9 +41,20 @@
             {{/each}}
         </div>
     </div>
+    <div class="row">
+        <div class="col-12" style="text-align: center;">
+                <p><br>
+                    <br>
+                    <br>
+                    <br>
+                    © 2021 draftdaytrades <br>
+                    Made by @seanmun </p>
+        </div>
+    </div>
     </script>
     </head>
-    <body>
+    <body style="background: rgb(185,214,212);
+    background: linear-gradient(329deg, rgba(185,214,212,1) 0%, rgba(195,222,233,1) 50%);">
         <div class="container" id="menu">Loading score...</div>
         
         

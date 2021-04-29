@@ -1,0 +1,46 @@
+
+body {
+	font: system-ui, sans-serif;
+	padding: 2em 0em;
+	border-top: 10px solid #F7CF5E;
+}
+
+.price {
+	font-weight: bold; 
+}
+
+.logo {
+	font-size: 4em;
+	font-family: 'Zen Dots', cursive, Georgia, serif;
+	color: #013369;
+	text-shadow: #0080C4 5px 5px 0px;
+}
+
+p {
+	font-size: 0.5em;
+	font-family: 'Zen Dots', cursive;
+	color: #999999;
+
+}
+
+.logo span {
+	font-family: system-ui, sans-serif;
+}
+
+h3 {
+	font-family: 'Zen Dots', cursive;
+}
+
+.v {
+	background-color: #9DBF1A;
+	width: 2em;
+	font-family: sans-serif;
+	color: #FFF;
+	text-align: center;
+	height: 2em;
+	font-size: 0.5em;
+	line-height: 2em;
+	border-radius: 1em;
+	margin-left: 1em;
+}
+
