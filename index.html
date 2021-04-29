@@ -25,13 +25,15 @@
         </div>
         <div class="row">
             {{#each this as |category|}}
-                <div class="col-lg-10 offset-lg-1">
+                <div class="col-lg-6 offset-lg-3">
                     <div class="category">
                         <h3 class="mb-4 mt-2">{{@key}}</h3>
                             {{#each this as |team|}}
-                                    <div class="row">
-                                        <div class="name col-6" style="border:1px solid black;" width="50%">{{team.team}}</div>
-                                    <div class="price ml-auto col-6" width="50%" style="background-color:#efefef;text-align:left;border:1px solid black;" width="{{team.points}}">&nbsp;</div>
+                                    <div class="row" style="border:1px solid black;margin: 0.3em auto;">
+                                        <div class="name col-2" >{{team.team}}</div>
+                                    <div class="price col-4">
+                                        <div style="background-color:blue;text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;{{team.points}}</div>
+                                    </div>
                                     </div>
                             {{/each}}
                     </div>
