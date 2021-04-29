@@ -44,3 +44,11 @@ h3 {
 	margin-left: 1em;
 }
 
+@media only screen and (max-width: 600px) {
+	.logo {
+		font-size: 1.5em !important;
+		font-family: 'Zen Dots', Georgia, serif;
+		color: #013369;
+		text-shadow: #0080C4 1px 1px 0px;
+	}
+  }
