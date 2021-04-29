@@ -10,16 +10,16 @@ body {
 }
 
 .logo {
-	font-size: 4em;
+	font-size: 2em;
 	font-family: 'Zen Dots', cursive, Georgia, serif;
 	color: #013369;
 	text-shadow: #0080C4 5px 5px 0px;
 }
 
 p {
-	font-size: 0.5em;
+	font-size: 1em;
 	font-family: 'Zen Dots', cursive;
-	color: #999999;
+	color: #555555;
 
 }
 
