@@ -11,9 +11,9 @@ body {
 
 .logo {
 	font-size: 2em;
-	font-family: 'Zen Dots', cursive, Georgia, serif;
+	font-family: 'Zen Dots', Georgia, serif;
 	color: #013369;
-	text-shadow: #0080C4 5px 5px 0px;
+	text-shadow: #0080C4 2px 2px 0px;
 }
 
 p {
