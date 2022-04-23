@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function(event) {
 })
 
 function ready() {
-	let url = 'https://api.sheety.co/b2d25a34b81ecc6a5b3557adc04eb45a/2021NflDraftPool/scoreboard';
+	let url = 'https://api.sheety.co/b2d25a34b81ecc6a5b3557adc04eb45a/2022NflDraftPool/scoreboard';
 	fetch(url)
 	.then((response) => response.json())
 	.then(json => {
