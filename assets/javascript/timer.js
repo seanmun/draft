@@ -1,9 +1,26 @@
-setInterval(function () {
-    var d = new Date();
-    var seconds = d.getMinutes() * 60 + d.getSeconds(); //convet 00:00 to seconds for easier caculation
-    var fiveMin = 60 * 5; //five minutes is 300 seconds!
-    var timeleft = fiveMin - seconds % fiveMin; // let's say 01:30, then current seconds is 90, 90%300 = 90, then 300-90 = 210. That's the time left!
-    var result = parseInt(timeleft / 60) + ':' + timeleft % 60; //formart seconds into 00:00 
-    document.getElementById('test').innerHTML = result;
+function checklength(i) {
+    'use strict';
+    if (i < 100) {
+        i = "0" + i;
+    }
+    return i;
+}
 
-}, 500) //calling it every 0.5 second to do a count down
+var minutes, seconds, count, counter, timer;
+count = 61; //seconds
+counter = setInterval(timer, 1000);
+
+function timer() {
+    'use strict';
+    count = count - 1;
+    minutes = checklength(Math.floor(count / 60));
+    seconds = checklength(count - minutes * 60);
+    if (count < 0) {
+        clearInterval(counter);
+        return;
+    }
+    document.getElementById("timer").innerHTML = 'Next refresh in ' + minutes + ':' + seconds + ' ';
+    if (count === 0) {
+        location.reload();
+    }
+}
