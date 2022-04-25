@@ -1,6 +1,6 @@
 function checklength(i) {
     'use strict';
-    if (i < 100) {
+    if (i < 10) {
         i = "0" + i;
     }
     return i;
