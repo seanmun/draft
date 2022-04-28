@@ -10,6 +10,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="refresh" content="300">
     <link rel="stylesheet" href="/assets/css/styles.css">
+    <style>
+        input:hover {background-color: #00739F!important;}
+        .name {white-space: nowrap;}
+    </style>
     
     <script id="menu-template" type="text/x-handlebars-template">
      
@@ -17,30 +21,31 @@
         <div class="row text-center">
             <div class="col-lg-10 offset-lg-1">
                 <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/80/NFL_Draft_logo.svg/1200px-NFL_Draft_logo.svg.png" width="150">
-                <h1 class="logo" style="font-size: 2em;">NFL Draft 2022<br/>
-                    Confidence Pool
+                <h1 class="logo" style="font-size: 2em;">
+                    2022 Confidence Pool
                 </h1>
                 <p style="color:red;font-weight:bold;font-size: 2em;">LIVE!</p>
-               <div id="timer"></div>
-            
-                <audio id="myAudio" controls autoplay>
-                    <source src="assets/sounds/Chime.mp3" type="audio/mp3">
-                </audio>
+               <div id="timer"></div> 
+               <!-- <input id="input" type="button" value="Refresh" onclick="play(),reload()" style="border: #39C0BA solid 1px;border-radius: 15px;padding: 5px 8px;background-color: #ffffff;"> -->
+               <audio id="myAudio" controls autoplay>
+                <source src="assets/sounds/Chime.mp3" type="audio/mp3">
+            </audio>
+            <!-- <p style="color:green;font-weight:bold;font-size: 0.8em;margin: 0px;">$170 to the winner!</p> -->
                 <!-- <p style="color:green;font-weight:bold;font-size: 0.8em;margin: 0px;">$170 to the winner!</p> -->
-            
+            <div>&nbsp;</div>
             </div>
         </div>
         <div class="row">
             {{#each this as |category|}}
-                <div class="col-lg-6 offset-lg-3">
+                <div class="col-lg-8 offset-lg-2">
                     <div class="category">
                         <!-- <h3 class="mb-4 mt-2">{{@key}}</h3> -->
                             {{#each this as |team|}}
-                                    <div class="row" style="border:1px solid #ffffff;margin: 0.3em auto;background-color: #ffffff;border-radius: 5px;">
-                                        <div class="name col-3" >{{team.team}}</div>
-                                    <div class="price col-3">
-                                        <div style="background: rgb(57,194,186);background: linear-gradient(329deg, rgba(57,194,186,1) 0%, rgba(0,115,159,1) 50%);;text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;{{team.points}}</div>
-                                    </div>
+                                    <div class="row" style="border:4px solid #ffffff;margin: 0.3em auto;background-color: #ffffff;border-radius: 5px;">
+                                        <div class="name" style="width: 150px;padding-left: 5px;" >{{team.team}}</div>
+                                        <div class="score">
+                                            <div style="background: rgb(57,194,186);background: linear-gradient(329deg, rgb(57, 194, 186) 0%, rgba(0,115,159,1) 50%);;text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;{{team.points}}</div>
+                                        </div>
                                     </div>
                             {{/each}}
                     </div>
@@ -81,5 +86,6 @@
 
     </script>
 
+   
 
     </html>

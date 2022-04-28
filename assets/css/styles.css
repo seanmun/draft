@@ -5,7 +5,7 @@ body {
 	border-top: 10px solid #F7CF5E;
 }
 
-.price {
+.score {
 	font-weight: bold; 
 }
 
@@ -16,7 +16,7 @@ body {
 	text-shadow: #0080C4 1px 1px 0px;
 }
 
-p {
+p, .name, .score {
 	font-size: 1em;
 	font-family: 'Zen Dots', cursive;
 	color: #555555;
@@ -43,6 +43,7 @@ h3 {
 	border-radius: 1em;
 	margin-left: 1em;
 }
+
 
 @media only screen and (max-width: 600px) {
 	.logo {
