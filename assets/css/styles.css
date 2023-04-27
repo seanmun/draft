@@ -11,14 +11,14 @@ body {
 
 .logo {
 	font-size: 2em;
-	font-family: 'Zen Dots', Georgia, serif;
+	font-family: 'Space Mono', Georgia, serif;
 	color: #013369;
 	text-shadow: #0080C4 1px 1px 0px;
 }
 
 p, .name, .score {
 	font-size: 1em;
-	font-family: 'Zen Dots', cursive;
+	font-family: 'Space Mono', cursive;
 	color: #555555;
 
 }
@@ -28,7 +28,7 @@ p, .name, .score {
 }
 
 h3 {
-	font-family: 'Zen Dots', cursive;
+	font-family: 'Space Mono', cursive;
 }
 
 .v {
@@ -48,7 +48,7 @@ h3 {
 @media only screen and (max-width: 600px) {
 	.logo {
 		font-size: 1.5em !important;
-		font-family: 'Zen Dots', Georgia, serif;
+		font-family: 'Space Mono', Georgia, serif;
 		color: #013369;
 		text-shadow: #0080C4 1px 1px 0px;
 	}
