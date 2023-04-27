@@ -26,7 +26,7 @@
             <div class="col-lg-10 offset-lg-1">
                 <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/80/NFL_Draft_logo.svg/1200px-NFL_Draft_logo.svg.png" width="150">
                 <h1 class="logo" style="font-size: 2em;">
-                    2022 Confidence Pool
+                    2023 Confidence Pool
                 </h1>
                 <p style="color:red;font-weight:bold;font-size: 2em;">LIVE!</p>
                <div id="timer"></div> 
@@ -44,9 +44,14 @@
                         <!-- <h3 class="mb-4 mt-2">{{@key}}</h3> -->
                             {{#each this as |team|}}
                                     <div class="row" style="border:4px solid #ffffff;margin: 0.3em auto;background-color: #ffffff;border-radius: 5px;">
-                                        <div class="name" style="width: 150px;padding-left: 5px;" >{{team.team}}</div>
+                                        <div class="name" style="width: 110px;padding-left: 5px;" >{{team.team}}</div>
                                         <div class="score">
-                                            <div style="background: rgb(57,194,186);background: linear-gradient(329deg, rgb(57, 194, 186) 0%, rgba(0,115,159,1) 50%);;text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;{{team.points}}</div>
+                                            <div class="d-none d-sm-block" style="background: rgb(119, 219, 213);background: linear-gradient(329deg, rgb(193, 237, 234) 0%, rgba(0,115,159,1) 90%);text-align:left;width:{{team.correct}}px;color:#ffffff;">&nbsp;</div>
+                                            <div class="d-block d-sm-none" style="background: rgb(119, 219, 213);background: linear-gradient(329deg, rgb(193, 237, 234) 0%, rgba(0,115,159,1) 90%);text-align:left;width:{{team.correct2}}px;color:#ffffff;">&nbsp;</div>
+
+                                        </div>
+                                        <div class="score" style="position:relative;left: 0px;letter-spacing:-0.5px;font-size: 0.9em;">
+                                            {{team.points}}
                                         </div>
                                     </div>
                             {{/each}}
