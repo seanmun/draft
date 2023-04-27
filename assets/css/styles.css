@@ -1,6 +1,6 @@
 
 body {
-	font: system-ui, sans-serif;
+	font: 'Space Mono', Georgia, serif;
 	padding: 2em 0em;
 	border-top: 10px solid #F7CF5E;
 }
@@ -24,11 +24,11 @@ p, .name, .score {
 }
 
 .logo span {
-	font-family: system-ui, sans-serif;
+	font-family: Georgia, serif;
 }
 
 h3 {
-	font-family: 'Space Mono', cursive;
+	font-family: 'Space Mono', Georgia, serif;
 }
 
 .v {
