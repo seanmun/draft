@@ -8,7 +8,8 @@ import Link from 'next/link';
 import type { League, Player, Prediction } from '../../../../lib/types';
 
 // Mock data for team picks - in a real app, this would come from the database
-const mockTeamPicks = {
+// Change the mockTeamPicks declaration to include an index signature:
+const mockTeamPicks: {[key: number]: {team: string}} = {
   1: { team: 'Bears' },
   2: { team: 'Commanders' },
   3: { team: 'Patriots' },
