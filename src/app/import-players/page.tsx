@@ -39,7 +39,8 @@ export default function ImportPlayersPage() {
       const nameIndex = headers.indexOf('name');
       const positionIndex = headers.indexOf('position');
       const schoolIndex = headers.indexOf('school');
-      
+      const rankIndex = headers.indexOf('rank'); // Add this line
+
       // Validate headers
       if (nameIndex === -1 || positionIndex === -1) {
         throw new Error('CSV must include "name" and "position" columns');
@@ -58,6 +59,7 @@ export default function ImportPlayersPage() {
           name: values[nameIndex],
           position: values[positionIndex],
           school: schoolIndex !== -1 ? values[schoolIndex] || '' : '',
+          rank: rankIndex !== -1 ? parseInt(values[rankIndex]) || i : i, // Use provided rank or row number as default
         };
         
         if (player.name && player.position) {
@@ -78,6 +80,7 @@ export default function ImportPlayersPage() {
           school: player.school,
           sportType: sportType,
           draftYear: draftYear,
+          rank: player.rank,
         };
         
         const newPlayerRef = doc(collection(db, 'players'));
@@ -161,7 +164,7 @@ export default function ImportPlayersPage() {
             className="w-full px-3 py-2 border border-gray-300 rounded-md"
           />
           <p className="text-xs text-gray-500 mt-1">
-            CSV format: name, position, school
+            CSV format: name, position, school, rank
           </p>
         </div>
         
@@ -190,11 +193,11 @@ export default function ImportPlayersPage() {
           Your CSV file should have the following columns:
         </p>
         <pre className="bg-white p-3 text-sm font-mono rounded border border-blue-200">
-{`name,position,school
-Caleb Williams,QB,USC
-Marvin Harrison Jr.,WR,Ohio State
-Drake Maye,QB,North Carolina
-`}
+      {`name,position,school,rank
+      Cam Ward,QB,Miami,1
+      Travis Hunter,WR/DB,Colorado,2
+      Abdul Carter,DE,Penn State,3
+      `}
         </pre>
       </div>
     </div>

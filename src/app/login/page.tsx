@@ -9,13 +9,19 @@ export default function Login() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!loading && user) {
+// In the useEffect that handles redirect after login, add this:
+useEffect(() => {
+  if (!loading && user) {
+    // Check if there's a pending join link
+    const pendingJoin = sessionStorage.getItem('pendingJoin');
+    if (pendingJoin) {
+      sessionStorage.removeItem('pendingJoin');
+      router.push(pendingJoin);
+    } else {
       router.push('/leagues');
     }
-  }, [user, loading, router]);
-
-  if (loading) return <div>Loading...</div>;
+  }
+}, [user, loading, router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">

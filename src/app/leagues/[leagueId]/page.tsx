@@ -21,6 +21,30 @@ export default function LeagueDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+
+  // Inside your component, add this state
+const [inviteCopied, setInviteCopied] = useState(false);
+
+// Add this function to handle copying the invite link
+const copyInviteLink = () => {
+  // Check if league exists
+  if (!league) return;
+  
+  // Construct the invite link
+  const baseUrl = window.location.origin;
+  const inviteLink = `${baseUrl}/join-league?code=${league.settings.inviteCode}&id=${league.id}`;
+  
+  // Copy to clipboard
+  navigator.clipboard.writeText(inviteLink)
+    .then(() => {
+      setInviteCopied(true);
+      setTimeout(() => setInviteCopied(false), 3000); // Reset after 3 seconds
+    })
+    .catch(err => {
+      console.error('Failed to copy invite link:', err);
+    });
+};
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -178,10 +202,10 @@ export default function LeagueDetailPage() {
           
           <div className="space-y-3">
             <button
-              onClick={() => {/* TODO: Copy invite link */}}
+              onClick={copyInviteLink}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
             >
-              Copy Invite Link
+              {inviteCopied ? 'Copied!' : 'Copy Invite Link'}
             </button>
             
             <Link
@@ -218,8 +242,44 @@ export default function LeagueDetailPage() {
           >
             Make your predictions now
           </Link>
+          <Link
+            href={`/leagues/${leagueId}/leaderboard`}
+            className="block w-full border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium py-2 px-4 rounded text-center"
+          >
+            View Leaderboard
+          </Link>
         </div>
       </div>
+
+      {/* Add this section to the league detail page */}
+      {league && (
+        <div className="bg-white rounded-lg shadow p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Invite Friends</h2>
+          <p className="text-gray-600 mb-4">
+            Share this link with friends to invite them to join your league:
+          </p>
+          
+          <div className="flex">
+            <input
+              type="text"
+              readOnly
+              value={`${window.location.origin}/join-league?code=${league.settings.inviteCode}&id=${league.id}`}
+              className="w-full px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={copyInviteLink}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-r-md"
+            >
+              {inviteCopied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
+          
+          <div className="mt-3 text-sm text-gray-500">
+            <span className="font-medium mr-2">Invite Code:</span>
+            {league.settings.inviteCode}
+          </div>
+        </div>
+      )}
       
       {/* Admin Section - Only visible to the admin user */}
       {isAdmin && (
@@ -233,6 +293,28 @@ export default function LeagueDetailPage() {
           </Link>
         </div>
       )}
+
+    // Add in the JSX where you have the admin actions
+    {(user.uid === league.createdBy || user.uid === ADMIN_USER_ID) && (
+      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Admin Actions</h2>
+        <div className="space-y-3">
+          <Link 
+            href={`/leagues/${leagueId}/manage-draft`} 
+            className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded text-center"
+          >
+            Manage Draft Picks
+          </Link>
+          
+          <Link 
+            href="/manage-players" 
+            className="block w-full border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium py-2 px-4 rounded text-center"
+          >
+            Manage Players
+          </Link>
+        </div>
+      </div>
+    )}
       
       <div className="flex justify-between">
         <button

@@ -8,7 +8,7 @@ import { Player, SportType } from '../../lib/types';
 import Link from 'next/link';
 
 // Admin user ID
-const ADMIN_USER_ID = 'gT2kV06j0udPRzdPBd0jt82ufNk2';
+const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || '';
 
 export default function ManagePlayersPage() {
   const router = useRouter();
