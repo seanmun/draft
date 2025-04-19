@@ -7,6 +7,7 @@ import { db } from '../../../../lib/firebase';
 import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
 import type { League, Player, Prediction, ActualPick } from '../../../../lib/types';
+import UserAvatar from '../../../../components/common/UserAvatar';
 
 // Import the isAdmin utility
 import { isAdmin } from '../../../../lib/admin';
@@ -152,6 +153,19 @@ export default function LeaderboardPage() {
       
       // Add the current user to the map
       userMap[user!.uid] = user!.displayName || 'Anonymous';
+      
+      // Try to fetch user profiles for all members
+      for (const memberId of leagueData.members) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', memberId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            userMap[memberId] = userData.displayName || `User ${memberId.substring(0, 5)}`;
+          }
+        } catch (e) {
+          console.error(`Error fetching user ${memberId}:`, e);
+        }
+      }
       
       // Create initial scores for all league members
       leagueData.members.forEach(memberId => {
@@ -303,17 +317,11 @@ export default function LeaderboardPage() {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center">
-                        {score.photoURL ? (
-                          <img 
-                            src={score.photoURL} 
-                            alt={score.displayName} 
-                            className="w-8 h-8 rounded-full mr-3"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                            <span className="text-gray-600">{score.displayName.charAt(0)}</span>
-                          </div>
-                        )}
+                        <UserAvatar 
+                          userId={score.userId}
+                          size="sm"
+                          className="mr-3"
+                        />
                         <span className="font-medium text-gray-900">{score.displayName}</span>
                         {score.userId === user.uid && (
                           <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">

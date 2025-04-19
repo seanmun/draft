@@ -8,7 +8,7 @@ import Link from 'next/link';
 import UserAvatar from '../../../components/common/UserAvatar';
 import type { League, UserProfile } from '../../../lib/types';
 
-// Admin user ID
+// Admin user ID - only this user will see Oracle Actions
 const ADMIN_USER_ID = 'gT2kV06j0udPRzdPBd0jt82ufNk2';
 
 export default function LeagueDetailPage() {
@@ -130,7 +130,11 @@ export default function LeagueDetailPage() {
     }
   }, [leagueId, user, authLoading, router]);
 
-  const isAdmin = user && user.uid === ADMIN_USER_ID;
+  // Check if current user is the admin
+  const isUserAdmin = user && user.uid === ADMIN_USER_ID;
+  
+  // Check if current user is the league creator
+  const isLeagueCreator = user && league && user.uid === league.createdBy;
 
   if (authLoading || (loading && user)) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
@@ -271,8 +275,8 @@ export default function LeagueDetailPage() {
         </div>
       </div>
       
-      {/* Admin/Oracle Actions */}
-      {(user.uid === league.createdBy || user.uid === ADMIN_USER_ID) && (
+      {/* Oracle Actions - Only show for the site admin */}
+      {isUserAdmin && (
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Oracle Actions</h2>
           <div className="space-y-3">
@@ -302,7 +306,8 @@ export default function LeagueDetailPage() {
           Back to leagues
         </button>
         
-        {user.uid === league.createdBy && (
+        {/* Manage League link - Only show for league creator */}
+        {isLeagueCreator && (
           <Link
             href={`/leagues/${leagueId}/manage`}
             className="text-blue-600 hover:underline"
