@@ -7,8 +7,6 @@ import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
 import type { Team, League, Player, Prediction } from '../../../../lib/types';
 
-
-
 export default function PredictionsPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -32,6 +30,7 @@ export default function PredictionsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
+  const [showConfidenceSelector, setShowConfidenceSelector] = useState<number | null>(null);
   
   useEffect(() => {
     if (!authLoading && !user) {
@@ -259,6 +258,9 @@ export default function PredictionsPage() {
         )
       );
     }
+    
+    // Close the confidence selector
+    setShowConfidenceSelector(null);
   };
   
   const handleClearPick = (position: number) => {
@@ -320,6 +322,23 @@ export default function PredictionsPage() {
       setSaving(false);
     }
   };
+
+  // Close confidence selector when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showConfidenceSelector !== null) {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.confidence-selector')) {
+          setShowConfidenceSelector(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showConfidenceSelector]);
 
   if (authLoading || (loading && user)) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
@@ -384,23 +403,23 @@ export default function PredictionsPage() {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12 md:px-3">
-                  Pick
+                <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8 md:px-2">
+                  #
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 md:w-28 md:px-3">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 md:w-28 md:px-3">
                   Team
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3 w-40 md:w-64">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3 w-40 md:w-64">
                   Player
                 </th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 md:w-36 md:px-3">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20 md:w-24 md:px-3">
                   Points
                 </th>
-                <th className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16 md:w-20 md:px-3">
-                  Clear
+                <th className="px-1 py-2 text-center w-10 md:w-12">
+                  {/* X icon column - no heading */}
                 </th>
                 {/* Reserved space for future additions */}
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3">
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3">
                   {/* Future content */}
                 </th>
               </tr>
@@ -412,7 +431,7 @@ export default function PredictionsPage() {
               
               return (
                 <tr key={prediction.position} className="hover:bg-gray-50">
-                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 md:px-3">
+                  <td className="px-1 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 md:px-2">
                     {prediction.position}
                   </td>
                   <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-900 md:px-3">
@@ -421,7 +440,7 @@ export default function PredictionsPage() {
                         {team.logoUrl && (
                           <img src={team.logoUrl} alt={team.name} className="h-5 w-5 mr-2" />
                         )}
-                        {/* Show abbreviation on mobile, full name on desktop */}
+                        {/* Only show team name on desktop */}
                         <span className="hidden md:inline">{team.name}</span>
                       </div>
                     ) : (
@@ -445,36 +464,79 @@ export default function PredictionsPage() {
                       </button>
                     )}
                   </td>
-                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-500 md:px-3">
+                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-500 md:px-3 relative">
                     {player ? (
-                      <select
-                        value={prediction.confidence || ''}
-                        onChange={(e) => handleConfidenceSelect(prediction.position, Number(e.target.value))}
-                        className="block w-full pl-2 pr-6 py-1 md:pl-3 md:pr-8 md:py-2 text-xs md:text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                      >
-                        <option value="">Select Points</option>
-                        {availableConfidencePoints.map(point => (
-                          <option key={point} value={point}>
-                            {point}
-                          </option>
-                        ))}
-                        {prediction.confidence && !availableConfidencePoints.includes(prediction.confidence) && (
-                          <option value={prediction.confidence}>
-                            {prediction.confidence}
-                          </option>
+                      <div className="relative">
+                        <button
+                          onClick={() => setShowConfidenceSelector(prediction.position)}
+                          className="flex items-center justify-between w-full border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs md:text-sm"
+                        >
+                          <span className="font-medium">
+                            {prediction.confidence || 'Points'}
+                          </span>
+                          <svg 
+                            className="h-4 w-4 text-gray-400" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24" 
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                        
+                        {/* Confidence selector popup */}
+                        {showConfidenceSelector === prediction.position && (
+                          <div 
+                            className="confidence-selector absolute z-10 mt-1 w-40 bg-white shadow-lg max-h-60 rounded-md border border-gray-200 overflow-auto"
+                            style={{ left: '0', top: '100%' }}
+                          >
+                            <div className="grid grid-cols-3 gap-1 p-2">
+                              {availableConfidencePoints.map(point => (
+                                <button
+                                  key={point}
+                                  onClick={() => handleConfidenceSelect(prediction.position, point)}
+                                  className="text-xs md:text-sm py-2 px-3 hover:bg-blue-100 rounded text-center"
+                                >
+                                  {point}
+                                </button>
+                              ))}
+                              {prediction.confidence && !availableConfidencePoints.includes(prediction.confidence) && (
+                                <button
+                                  onClick={() => handleConfidenceSelect(prediction.position, prediction.confidence as number)}
+                                  className="text-xs md:text-sm py-2 px-3 bg-blue-100 rounded text-center"
+                                >
+                                  {prediction.confidence}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </select>
+                      </div>
                     ) : (
                       <span className="text-gray-400">–</span>
                     )}
                   </td>
-                  <td className="px-2 py-3 whitespace-nowrap text-center text-xs md:text-sm font-medium md:px-3">
+                  <td className="px-1 py-3 whitespace-nowrap text-center text-xs md:text-sm font-medium md:px-2">
                     {player && (
                       <button
                         onClick={() => handleClearPick(prediction.position)}
-                        className="text-red-600 hover:text-red-900"
+                        className="text-gray-400 hover:text-red-600 group relative"
+                        aria-label="Clear pick"
                       >
-                        Clear
+                        <svg 
+                          xmlns="http://www.w3.org/2000/svg" 
+                          className="h-4 w-4 md:h-5 md:w-5" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        {/* Hover tooltip */}
+                        <span className="absolute bg-gray-800 text-white text-xs rounded py-1 px-2 -mt-8 left-1/2 transform -translate-x-1/2 invisible group-hover:visible whitespace-nowrap">
+                          Clear
+                        </span>
                       </button>
                     )}
                   </td>
