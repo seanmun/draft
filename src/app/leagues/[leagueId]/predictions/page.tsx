@@ -354,8 +354,8 @@ export default function PredictionsPage() {
         <h2 className="text-lg font-semibold text-blue-800 mb-2">Instructions</h2>
         <p className="text-blue-700">
           Select which players will be drafted at each position. Then, assign confidence points to each of your picks.
-          The highest confidence rating ({league.settings.totalPicks}) should be given to the pick you're most confident about.
-          The lowest confidence rating (1) should be given to the pick you're least confident about.
+          The highest confidence rating ({league.settings.totalPicks}) should be given to the pick you&apos;re most confident about.
+          The lowest confidence rating (1) should be given to the pick you&apos;re least confident about.
         </p>
       </div>
       

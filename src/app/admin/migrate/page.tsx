@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../../hooks/useAuth';
-import { isAdmin, migrateLeagueDraftResults } from '../../../lib/admin';
 import { collection, query, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import Link from 'next/link';
@@ -92,8 +91,6 @@ export default function MigrationPage() {
         }
       }));
       
-      // Perform migration
-      const result = await migrateLeagueDraftResults(leagueId);
       
       // Update status with result
       setMigrationStatus(prev => ({
