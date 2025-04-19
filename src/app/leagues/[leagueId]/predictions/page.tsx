@@ -5,29 +5,16 @@ import { doc, getDoc, collection, query, where, getDocs, setDoc } from 'firebase
 import { db } from '../../../../lib/firebase';
 import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
-import type { League, Player, Prediction } from '../../../../lib/types';
+import type { Team, League, Player, Prediction } from '../../../../lib/types';
 
-// Mock data for team picks - in a real app, this would come from the database
-const mockTeamPicks: {[key: number]: {team: string}} = {
-  1: { team: 'Bears' },
-  2: { team: 'Commanders' },
-  3: { team: 'Patriots' },
-  4: { team: 'Cardinals' },
-  5: { team: 'Chargers' },
-  6: { team: 'Giants' },
-  7: { team: 'Titans' },
-  8: { team: 'Falcons' },
-  9: { team: 'Bears' },
-  10: { team: 'Jets' },
-  // Add more mock teams for the remaining picks
-};
+
 
 export default function PredictionsPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  
+  const [teams, setTeams] = useState<Team[]>([]);
   const [league, setLeague] = useState<League | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [predictions, setPredictions] = useState<{
@@ -123,6 +110,13 @@ export default function PredictionsPage() {
       
       setLeague(leagueData);
       
+      // Get teams for this sport and year
+      const teamsQuery = query(
+        collection(db, 'teams'),
+        where('sportType', '==', leagueData.sportType),
+        where('draftYear', '==', leagueData.draftYear)
+      );
+      
       // Get players for this sport and year from global database
       const playersQuery = query(
         collection(db, 'players'),
@@ -130,7 +124,21 @@ export default function PredictionsPage() {
         where('draftYear', '==', leagueData.draftYear)
       );
       
-      const playersSnapshot = await getDocs(playersQuery);
+      // Fetch both teams and players in parallel
+      const [teamsSnapshot, playersSnapshot] = await Promise.all([
+        getDocs(teamsQuery),
+        getDocs(playersQuery)
+      ]);
+      
+      // Process teams data
+      const teamsData = teamsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Team[];
+      
+      setTeams(teamsData);
+      
+      // Process players data
       const playersData = playersSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -398,75 +406,86 @@ export default function PredictionsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {predictions.map((prediction) => {
-                const player = getPlayerById(prediction.playerId);
-                const teamInfo = mockTeamPicks[prediction.position] || { team: 'TBD' };
-                
-                return (
-                  <tr key={prediction.position} className="hover:bg-gray-50">
-                    <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 md:px-3">
-                      {prediction.position}
-                    </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-900 md:px-3">
-                      {teamInfo.team}
-                    </td>
-                    <td className="px-2 py-3 text-xs md:text-sm text-gray-500 md:px-3">
-                      {player ? (
-                        <div>
-                          <div className="font-medium text-gray-900">{player.name}</div>
-                          <div className="text-xs text-gray-500">
-                            {player.position} • {player.school || 'Unknown School'}
-                          </div>
+            {predictions.map((prediction) => {
+              const player = getPlayerById(prediction.playerId);
+              const team = teams.find(t => t.pick === prediction.position);
+              
+              return (
+                <tr key={prediction.position} className="hover:bg-gray-50">
+                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 md:px-3">
+                    {prediction.position}
+                  </td>
+                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-900 md:px-3">
+                    {team ? (
+                      <div className="flex items-center">
+                        {team.logoUrl && (
+                          <img src={team.logoUrl} alt={team.name} className="h-5 w-5 mr-2" />
+                        )}
+                        {/* Show abbreviation on mobile, full name on desktop */}
+                        <span className="hidden md:inline">{team.name}</span>
+                        <span className="md:hidden font-medium">{team.abbreviation}</span>
+                      </div>
+                    ) : (
+                      `Pick ${prediction.position}`
+                    )}
+                  </td>
+                  <td className="px-2 py-3 text-xs md:text-sm text-gray-500 md:px-3">
+                    {player ? (
+                      <div>
+                        <div className="font-medium text-gray-900">{player.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {player.position} • {player.school || 'Unknown School'}
                         </div>
-                      ) : (
-                        <button
-                          onClick={() => setEditingPosition(prediction.position)}
-                          className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-2 md:py-2 md:px-3 rounded text-xs md:text-sm"
-                        >
-                          Select Player
-                        </button>
-                      )}
-                    </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-500 md:px-3">
-                      {player ? (
-                        <select
-                          value={prediction.confidence || ''}
-                          onChange={(e) => handleConfidenceSelect(prediction.position, Number(e.target.value))}
-                          className="block w-full pl-2 pr-6 py-1 md:pl-3 md:pr-8 md:py-2 text-xs md:text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        >
-                          <option value="">Select Points</option>
-                          {availableConfidencePoints.map(point => (
-                            <option key={point} value={point}>
-                              {point}
-                            </option>
-                          ))}
-                          {prediction.confidence && !availableConfidencePoints.includes(prediction.confidence) && (
-                            <option value={prediction.confidence}>
-                              {prediction.confidence}
-                            </option>
-                          )}
-                        </select>
-                      ) : (
-                        <span className="text-gray-400">–</span>
-                      )}
-                    </td>
-                    <td className="px-2 py-3 whitespace-nowrap text-center text-xs md:text-sm font-medium md:px-3">
-                      {player && (
-                        <button
-                          onClick={() => handleClearPick(prediction.position)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </td>
-                    {/* Reserved cell for future content */}
-                    <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm md:px-3">
-                      {/* Future content */}
-                    </td>
-                  </tr>
-                );
-              })}
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setEditingPosition(prediction.position)}
+                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-2 md:py-2 md:px-3 rounded text-xs md:text-sm"
+                      >
+                        Select Player
+                      </button>
+                    )}
+                  </td>
+                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-500 md:px-3">
+                    {player ? (
+                      <select
+                        value={prediction.confidence || ''}
+                        onChange={(e) => handleConfidenceSelect(prediction.position, Number(e.target.value))}
+                        className="block w-full pl-2 pr-6 py-1 md:pl-3 md:pr-8 md:py-2 text-xs md:text-sm border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                      >
+                        <option value="">Select Points</option>
+                        {availableConfidencePoints.map(point => (
+                          <option key={point} value={point}>
+                            {point}
+                          </option>
+                        ))}
+                        {prediction.confidence && !availableConfidencePoints.includes(prediction.confidence) && (
+                          <option value={prediction.confidence}>
+                            {prediction.confidence}
+                          </option>
+                        )}
+                      </select>
+                    ) : (
+                      <span className="text-gray-400">–</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-3 whitespace-nowrap text-center text-xs md:text-sm font-medium md:px-3">
+                    {player && (
+                      <button
+                        onClick={() => handleClearPick(prediction.position)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </td>
+                  {/* Reserved cell for future content */}
+                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm md:px-3">
+                    {/* Future content */}
+                  </td>
+                </tr>
+              );
+            })}
             </tbody>
           </table>
         </div>
