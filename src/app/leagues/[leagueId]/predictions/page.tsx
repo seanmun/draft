@@ -423,7 +423,6 @@ export default function PredictionsPage() {
                         )}
                         {/* Show abbreviation on mobile, full name on desktop */}
                         <span className="hidden md:inline">{team.name}</span>
-                        <span className="md:hidden font-medium">{team.abbreviation}</span>
                       </div>
                     ) : (
                       `Pick ${prediction.position}`

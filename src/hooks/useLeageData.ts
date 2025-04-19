@@ -1,8 +1,23 @@
-// src/hooks/useLeagueData.ts
+// src/hooks/useLeageData.ts
 import { useState, useEffect } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Player, League, ActualPick } from '../lib/types';
+import { Player, League, ActualPick, Prediction } from '../lib/types';
+
+// Define typed interfaces for scores
+interface UserScore {
+  userId: string;
+  score: number;
+  correctPicks: number;
+  possiblePoints: number;
+  totalPicks: number;
+}
+
+interface PredictionPick {
+  position: number;
+  playerId: string;
+  confidence: number;
+}
 
 /**
  * Custom hook to fetch players for a league based on sport type and draft year
@@ -89,7 +104,14 @@ export const useLeagueResults = (league: League | null) => {
         const fetchedResults: ActualPick[] = [];
         
         snapshot.forEach(doc => {
-          fetchedResults.push({ id: doc.id, ...doc.data() } as ActualPick);
+          const data = doc.data();
+          fetchedResults.push({ 
+            position: data.position,
+            playerId: data.playerId,
+            sportType: data.sportType,
+            draftYear: data.draftYear,
+            teamId: data.teamId
+          } as ActualPick);
         });
         
         // Sort results by position
@@ -113,8 +135,13 @@ export const useLeagueResults = (league: League | null) => {
 /**
  * Custom hook to calculate scores for a league based on predictions and actual results
  */
-export const useLeagueScores = (league: League | null, predictions: any[], players: Player[], results: ActualPick[]) => {
-  const [scores, setScores] = useState<any[]>([]);
+export const useLeagueScores = (
+  league: League | null, 
+  predictions: Prediction[], 
+  players: Player[], 
+  results: ActualPick[]
+) => {
+  const [scores, setScores] = useState<UserScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -132,7 +159,7 @@ export const useLeagueScores = (league: League | null, predictions: any[], playe
         let correctPicks = 0;
         let possiblePoints = 0;
         
-        prediction.picks.forEach((pick: any) => {
+        prediction.picks.forEach((pick: PredictionPick) => {
           const actualPick = results.find(result => result.position === pick.position);
           
           // Add to possible points
@@ -151,8 +178,7 @@ export const useLeagueScores = (league: League | null, predictions: any[], playe
           correctPicks,
           possiblePoints,
           totalPicks: prediction.picks.length,
-          // Add additional user info like displayName, etc.
-        };
+        } as UserScore;
       });
       
       // Sort by score (highest first)
