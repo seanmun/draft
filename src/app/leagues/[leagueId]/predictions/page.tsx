@@ -8,7 +8,6 @@ import Link from 'next/link';
 import type { League, Player, Prediction } from '../../../../lib/types';
 
 // Mock data for team picks - in a real app, this would come from the database
-// Change the mockTeamPicks declaration to include an index signature:
 const mockTeamPicks: {[key: number]: {team: string}} = {
   1: { team: 'Bears' },
   2: { team: 'Commanders' },
@@ -24,7 +23,6 @@ const mockTeamPicks: {[key: number]: {team: string}} = {
 };
 
 export default function PredictionsPage() {
-  // State and function definitions remain the same...
   const params = useParams();
   const leagueId = params.leagueId as string;
   const router = useRouter();
@@ -48,7 +46,6 @@ export default function PredictionsPage() {
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
   
-  // Rest of your functions and effects remain the same...
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -60,36 +57,35 @@ export default function PredictionsPage() {
     }
   }, [leagueId, user, authLoading, router]);
   
-// In src/app/leagues/[leagueId]/predictions/page.tsx
-useEffect(() => {
-  // Filter players based on search term
-  let filtered = [...players];
-  
-  if (searchTerm.trim() !== '') {
-    const term = searchTerm.toLowerCase();
-    filtered = filtered.filter(player => 
-      player.name.toLowerCase().includes(term) || 
-      player.position.toLowerCase().includes(term) ||
-      (player.school && player.school.toLowerCase().includes(term))
-    );
-  }
-  
-  // Sort by rank (ascending order - lower rank numbers first)
-  filtered.sort((a, b) => {
-    // If both have ranks, sort by rank
-    if (a.rank !== undefined && b.rank !== undefined) {
-      return a.rank - b.rank;
+  useEffect(() => {
+    // Filter players based on search term
+    let filtered = [...players];
+    
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(player => 
+        player.name.toLowerCase().includes(term) || 
+        player.position.toLowerCase().includes(term) ||
+        (player.school && player.school.toLowerCase().includes(term))
+      );
     }
-    // If only a has rank, it comes first
-    if (a.rank !== undefined) return -1;
-    // If only b has rank, it comes first
-    if (b.rank !== undefined) return 1;
-    // If neither has rank, sort by name
-    return a.name.localeCompare(b.name);
-  });
-  
-  setFilteredPlayers(filtered);
-}, [searchTerm, players]);
+    
+    // Sort by rank (ascending order - lower rank numbers first)
+    filtered.sort((a, b) => {
+      // If both have ranks, sort by rank
+      if (a.rank !== undefined && b.rank !== undefined) {
+        return a.rank - b.rank;
+      }
+      // If only a has rank, it comes first
+      if (a.rank !== undefined) return -1;
+      // If only b has rank, it comes first
+      if (b.rank !== undefined) return 1;
+      // If neither has rank, sort by name
+      return a.name.localeCompare(b.name);
+    });
+    
+    setFilteredPlayers(filtered);
+  }, [searchTerm, players]);
   
   useEffect(() => {
     // Update available confidence points whenever predictions change
@@ -127,7 +123,7 @@ useEffect(() => {
       
       setLeague(leagueData);
       
-      // Get players for this sport and year
+      // Get players for this sport and year from global database
       const playersQuery = query(
         collection(db, 'players'),
         where('sportType', '==', leagueData.sportType),
@@ -317,7 +313,6 @@ useEffect(() => {
     }
   };
 
-  // The JSX return has been updated for better spacing
   if (authLoading || (loading && user)) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }

@@ -8,6 +8,9 @@ import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
 import type { League, Player, Prediction, ActualPick } from '../../../../lib/types';
 
+// Import the isAdmin utility
+import { isAdmin } from '../../../../lib/admin';
+
 interface UserScore {
   userId: string;
   displayName: string;
@@ -18,6 +21,12 @@ interface UserScore {
   totalPicks: number;
 }
 
+// Define an extended ActualPick type that includes an id and timestamp
+interface ActualPickWithId extends ActualPick {
+  id: string;
+  timestamp?: Date;
+}
+
 export default function LeaderboardPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -26,13 +35,15 @@ export default function LeaderboardPage() {
   
   const [league, setLeague] = useState<League | null>(null);
   const [players, setPlayers] = useState<{[key: string]: Player}>({});
-  const [actualPicks, setActualPicks] = useState<{[key: number]: ActualPick | null}>({});
+  const [actualPicks, setActualPicks] = useState<{[key: number]: ActualPickWithId | null}>({});
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [scores, setScores] = useState<UserScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || '';
+  
+  // Define ADMIN_USER_ID through the isAdmin function
+  const checkIsAdmin = (userId: string) => isAdmin(userId);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -87,32 +98,40 @@ export default function LeaderboardPage() {
       
       setPlayers(playersMap);
       
-      // Get actual picks
-      const actualPicksDoc = await getDoc(doc(db, 'actualPicks', leagueId));
-      const actualPicksMap: {[key: number]: ActualPick | null} = {};
+      // Get global draft results from draftResults collection
+      const draftResultsQuery = query(
+        collection(db, 'draftResults'),
+        where('sportType', '==', leagueData.sportType),
+        where('draftYear', '==', leagueData.draftYear)
+      );
       
-      if (actualPicksDoc.exists()) {
-        const picksData = actualPicksDoc.data();
-        
-        for (let i = 1; i <= leagueData.settings.totalPicks; i++) {
-          actualPicksMap[i] = null;
-        }
-        
-        for (const position in picksData.picks) {
-          const pos = parseInt(position);
-          actualPicksMap[pos] = {
-            position: pos,
-            playerId: picksData.picks[position].playerId,
-            sportType: leagueData.sportType,
-            draftYear: leagueData.draftYear
-          };
-        }
-      } else {
-        // Initialize with empty picks
-        for (let i = 1; i <= leagueData.settings.totalPicks; i++) {
-          actualPicksMap[i] = null;
-        }
+      const draftResultsSnapshot = await getDocs(draftResultsQuery);
+      const actualPicksMap: {[key: number]: ActualPickWithId | null} = {};
+      
+      // Initialize with empty picks
+      for (let i = 1; i <= leagueData.settings.totalPicks; i++) {
+        actualPicksMap[i] = null;
       }
+      
+      // Fill with actual results
+      draftResultsSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const pickData: ActualPickWithId = {
+          id: doc.id,
+          position: data.position,
+          playerId: data.playerId,
+          sportType: data.sportType,
+          draftYear: data.draftYear,
+          teamId: data.teamId
+        };
+        
+        // Only add timestamp if it exists in the data
+        if (data.timestamp) {
+          pickData.timestamp = data.timestamp.toDate();
+        }
+        
+        actualPicksMap[pickData.position] = pickData;
+      });
       
       setActualPicks(actualPicksMap);
       
@@ -437,14 +456,14 @@ export default function LeaderboardPage() {
         </div>
       </div>
       
-      {/* Admin action: Manage draft picks */}
-      {(user.uid === league.createdBy || user.uid === ADMIN_USER_ID) && (
+      {/* Admin action: Global Oracle Link */}
+      {(checkIsAdmin(user.uid)) && (
         <div className="mt-6 flex justify-end">
           <Link
-            href={`/leagues/${leagueId}/manage-draft`}
+            href="/manage-draft"
             className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
           >
-            Manage Draft Picks
+            Global Draft Oracle
           </Link>
         </div>
       )}

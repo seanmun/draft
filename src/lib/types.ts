@@ -53,3 +53,14 @@ export interface UserProfile {
     sportType: SportType;
     draftYear: number;
   }
+
+  export interface Team {
+    id: string;
+    name: string;
+    abbreviation: string;
+    sportType: SportType;
+    draftYear: number;
+    pick: number;  // Draft position
+    needs?: string[];  // Team needs (e.g., "QB", "WR", etc.)
+    logoUrl?: string;  // URL to team logo
+  }

@@ -1,12 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../../lib/firebase';
 import { useAuth } from '../../../hooks/useAuth';
 import Link from 'next/link';
 import type { League, UserProfile } from '../../../lib/types';
-import SeedPlayers from '../../../components/admin/SeedPlayers';
 
 // Admin user ID
 const ADMIN_USER_ID = 'gT2kV06j0udPRzdPBd0jt82ufNk2';
@@ -225,31 +224,6 @@ const copyInviteLink = () => {
         </div>
       </div>
       
-      {/* Draft Prediction Status */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Draft Predictions</h2>
-        
-        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4">
-          <p className="text-yellow-700">
-            You haven't made your predictions yet for this draft. Make your predictions before draft day!
-          </p>
-        </div>
-        
-        <div className="mt-4">
-          <Link
-            href={`/leagues/${leagueId}/predictions`}
-            className="text-blue-600 hover:underline"
-          >
-            Make your predictions now
-          </Link>
-          <Link
-            href={`/leagues/${leagueId}/leaderboard`}
-            className="block w-full border border-gray-300 hover:bg-gray-50 text-gray-800 font-medium py-2 px-4 rounded text-center"
-          >
-            View Leaderboard
-          </Link>
-        </div>
-      </div>
 
       {/* Add this section to the league detail page */}
       {league && (
@@ -281,23 +255,10 @@ const copyInviteLink = () => {
         </div>
       )}
       
-      {/* Admin Section - Only visible to the admin user */}
-      {isAdmin && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Admin Actions</h2>
-          <Link 
-            href="/manage-players" 
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded block mb-2 text-center"
-          >
-            Manage Players
-          </Link>
-        </div>
-      )}
 
-    // Add in the JSX where you have the admin actions
     {(user.uid === league.createdBy || user.uid === ADMIN_USER_ID) && (
       <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <h2 className="text-xl font-semibold mb-4">Admin Actions</h2>
+        <h2 className="text-xl font-semibold mb-4">Oracle Actions</h2>
         <div className="space-y-3">
           <Link 
             href={`/leagues/${leagueId}/manage-draft`} 
