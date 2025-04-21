@@ -45,6 +45,8 @@ export interface Prediction {
   }[];
   createdAt: Date;
   updatedAt: Date;
+  isComplete?: boolean; 
+
 }
 
 export interface ActualPick {

@@ -25,6 +25,7 @@ export default function PredictionsPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [draftIsLive, setDraftIsLive] = useState<boolean>(false);
+  const [isPredictionComplete, setIsPredictionComplete] = useState<boolean>(false);
   
   // For the UI state
   const [availableConfidencePoints, setAvailableConfidencePoints] = useState<number[]>([]);
@@ -53,6 +54,13 @@ export default function PredictionsPage() {
       setAvailablePositions(positions);
     }
   }, [players]);
+  
+  useEffect(() => {
+    // Check if prediction is complete
+    const missingPicks = predictions.some(p => p.playerId === null);
+    const missingConfidence = predictions.some(p => p.confidence === null);
+    setIsPredictionComplete(!missingPicks && !missingConfidence);
+  }, [predictions]);
   
   useEffect(() => {
     // Filter players based on search term and position filter
@@ -310,7 +318,21 @@ export default function PredictionsPage() {
     );
   };
   
-  const handleSavePredictions = async () => {
+  const handleApplyChalk = () => {
+    if (draftIsLive || !league) return;
+    
+    const totalPicks = league.settings.totalPicks;
+    
+    // Set confidence points in "chalk" order (highest to lowest)
+    const updatedPredictions = predictions.map(p => ({
+      ...p,
+      confidence: totalPicks - p.position + 1
+    }));
+    
+    setPredictions(updatedPredictions);
+  };
+  
+  const handleSavePredictions = async (isComplete: boolean = false) => {
     if (!user || !league) return;
     
     // Prevent saving if draft is live
@@ -319,18 +341,20 @@ export default function PredictionsPage() {
       return;
     }
     
-    // Validate predictions
-    const missingPicks = predictions.some(p => p.playerId === null);
-    const missingConfidence = predictions.some(p => p.confidence === null);
-    
-    if (missingPicks) {
-      setError('Please select a player for each position');
-      return;
-    }
-    
-    if (missingConfidence) {
-      setError('Please assign a confidence rating to each pick');
-      return;
+    // If saving as complete, validate predictions
+    if (isComplete) {
+      const missingPicks = predictions.some(p => p.playerId === null);
+      const missingConfidence = predictions.some(p => p.confidence === null);
+      
+      if (missingPicks) {
+        setError('Please select a player for each position');
+        return;
+      }
+      
+      if (missingConfidence) {
+        setError('Please assign a confidence rating to each pick');
+        return;
+      }
     }
     
     setSaving(true);
@@ -344,11 +368,12 @@ export default function PredictionsPage() {
         leagueId,
         picks: predictions.map(p => ({
           position: p.position,
-          playerId: p.playerId as string,  // We've validated these are not null
-          confidence: p.confidence as number
+          playerId: p.playerId || "", // Handle null values for incomplete predictions
+          confidence: p.confidence || 0 // Handle null values for incomplete predictions
         })),
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        isComplete: isComplete
       };
       
       // Save to Firestore
@@ -357,7 +382,10 @@ export default function PredictionsPage() {
         predictionData
       );
       
-      setSuccess('Your predictions have been saved successfully!');
+      setSuccess(isComplete 
+        ? 'Your predictions have been saved successfully!' 
+        : 'Your progress has been saved. You can complete your predictions later.'
+      );
     } catch (error) {
       console.error('Error saving predictions:', error);
       setError('Failed to save predictions. Please try again.');
@@ -422,10 +450,13 @@ export default function PredictionsPage() {
       
       <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
         <h2 className="text-lg font-semibold text-blue-800 mb-2">Instructions</h2>
-        <p className="text-blue-700">
+        <p className="text-blue-700 mb-2">
           Select which players will be drafted at each position. Then, assign confidence points to each of your picks.
           The highest confidence rating ({league.settings.totalPicks}) should be given to the pick you&apos;re most confident about.
           The lowest confidence rating (1) should be given to the pick you&apos;re least confident about.
+        </p>
+        <p className="text-blue-700">
+          You can save your progress at any time and come back later to complete your predictions.
         </p>
       </div>
       
@@ -447,6 +478,28 @@ export default function PredictionsPage() {
       {success && (
         <div className="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
           <p className="text-green-700">{success}</p>
+        </div>
+      )}
+      
+      {/* Quick Tools */}
+      {!draftIsLive && (
+        <div className="bg-white rounded-lg shadow p-4 mb-6">
+          <h2 className="font-semibold text-gray-700 mb-3">Quick Tools</h2>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleApplyChalk}
+              className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md text-sm"
+              title="Assign confidence points based on draft order (highest to lowest)"
+            >
+              Apply Chalk Points
+            </button>
+            <div className="text-sm text-gray-500 ml-2 flex items-center">
+              <svg className="h-5 w-5 text-gray-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Assigns points in order: Pick 1 = {league.settings.totalPicks} points, Pick 2 = {league.settings.totalPicks - 1} points, etc.
+            </div>
+          </div>
         </div>
       )}
       
@@ -616,17 +669,40 @@ export default function PredictionsPage() {
         </div>
       </div>
       
-      <div className="flex justify-end">
-        <button
-          onClick={handleSavePredictions}
-          disabled={saving || draftIsLive}
-          className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg ${
-            saving || draftIsLive ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-        >
-          {saving ? 'Saving...' : draftIsLive ? 'Predictions Locked' : 'Save Predictions'}
-        </button>
-      </div>
+      {!draftIsLive && (
+        <div className="flex flex-col md:flex-row justify-end gap-3 md:gap-4">
+          <button
+            onClick={() => handleSavePredictions(false)}
+            disabled={saving}
+            className={`bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg ${
+              saving ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {saving ? 'Saving...' : 'Save Progress'}
+          </button>
+          
+          <button
+            onClick={() => handleSavePredictions(true)}
+            disabled={saving}
+            className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg ${
+              saving ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {saving ? 'Saving...' : isPredictionComplete ? 'Submit Complete Predictions' : 'Submit as Complete'}
+          </button>
+        </div>
+      )}
+      
+      {draftIsLive && (
+        <div className="flex justify-end">
+          <button
+            disabled={true}
+            className="bg-gray-400 text-white font-bold py-2 px-6 rounded-lg opacity-50 cursor-not-allowed text-lg"
+          >
+            Predictions Locked
+          </button>
+        </div>
+      )}
       
       {/* Player Selection Modal */}
       {editingPosition && !draftIsLive && (

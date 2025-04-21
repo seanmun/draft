@@ -13,11 +13,11 @@ const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || '';
 export default function ManagePlayersPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedSport, setSelectedSport] = useState<SportType>('NFL');
   const [selectedYear, setSelectedYear] = useState<number>(2025);
-  const [error, setError] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -36,7 +36,9 @@ export default function ManagePlayersPage() {
   }, [user, authLoading, router, selectedSport, selectedYear]);
 
   const fetchPlayers = async () => {
-    setLoading(true);
+    setIsLoading(true);
+    setErrorMessage(null);
+    
     try {
       const q = query(
         collection(db, 'players'),
@@ -53,9 +55,9 @@ export default function ManagePlayersPage() {
       setPlayers(playersData);
     } catch (error) {
       console.error('Error fetching players:', error);
-      setError('Failed to load players');
+      setErrorMessage('Failed to load players. Please try again.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -115,11 +117,19 @@ export default function ManagePlayersPage() {
           <button
             onClick={fetchPlayers}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+            disabled={isLoading}
           >
-            Refresh Player List
+            {isLoading ? 'Loading...' : 'Refresh Player List'}
           </button>
         </div>
       </div>
+      
+      {/* Error Message */}
+      {errorMessage && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <p className="text-red-700">{errorMessage}</p>
+        </div>
+      )}
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Import Options */}
@@ -142,14 +152,18 @@ export default function ManagePlayersPage() {
             Player List ({players.length} players)
           </h2>
           
-          {players.length === 0 ? (
+          {isLoading ? (
+            <div className="text-center py-4">
+              <p className="text-gray-600">Loading players...</p>
+            </div>
+          ) : players.length === 0 ? (
             <p className="text-gray-600">
               No players found for {selectedSport} {selectedYear}. Import players using the available options.
             </p>
           ) : (
             <div className="max-h-96 overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 sticky top-0">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name

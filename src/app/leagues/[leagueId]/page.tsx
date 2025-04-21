@@ -22,6 +22,16 @@ interface UserScore {
   totalPicks: number;
 }
 
+// User prediction status
+interface UserPredictionStatus {
+  userId: string;
+  displayName: string;
+  photoURL?: string;
+  hasSubmitted: boolean;
+  isComplete: boolean;
+  lastUpdated?: Date;
+}
+
 export default function LeagueDetailPage() {
   const params = useParams();
   const leagueId = params.leagueId as string;
@@ -30,10 +40,12 @@ export default function LeagueDetailPage() {
   const [league, setLeague] = useState<League | null>(null);
   const [members, setMembers] = useState<UserProfile[]>([]);
   const [winners, setWinners] = useState<UserScore[]>([]);
+  const [predictionStatus, setPredictionStatus] = useState<UserPredictionStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteCopied, setInviteCopied] = useState(false);
   const [draftIsCompleted, setDraftIsCompleted] = useState(false);
+  const [draftIsLive, setDraftIsLive] = useState(false);
   const [leagueNote, setLeagueNote] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [savingNote, setSavingNote] = useState(false);
@@ -103,13 +115,16 @@ export default function LeagueDetailPage() {
       
       const draftSettingsSnapshot = await getDocs(draftSettingsQuery);
       let isCompleted = false;
+      let isLive = false;
       
       if (!draftSettingsSnapshot.empty) {
         const settingsData = draftSettingsSnapshot.docs[0].data();
         isCompleted = settingsData.isCompleted === true;
+        isLive = settingsData.isLive === true;
       }
       
       setDraftIsCompleted(isCompleted);
+      setDraftIsLive(isLive);
       
       // Get league-specific note if available
       const leagueSettingsQuery = query(
@@ -184,6 +199,36 @@ export default function LeagueDetailPage() {
       }
       
       setMembers(memberProfiles);
+      
+      // Get members' prediction status
+      const predictionsQuery = query(
+        collection(db, 'predictions'),
+        where('leagueId', '==', leagueId)
+      );
+      
+      const predictionsSnapshot = await getDocs(predictionsQuery);
+      const predictions = predictionsSnapshot.docs.map(doc => doc.data() as Prediction);
+      
+      // Create prediction status entries for all members
+      const predictionStatusData: UserPredictionStatus[] = leagueData.members.map(memberId => {
+        const memberPrediction = predictions.find(p => p.userId === memberId);
+        const profile = userProfilesMap[memberId] || {
+          id: memberId,
+          displayName: `User ${memberId.substring(0, 5)}`,
+          photoURL: undefined
+        };
+        
+        return {
+          userId: memberId,
+          displayName: profile.displayName,
+          photoURL: profile.photoURL,
+          hasSubmitted: !!memberPrediction,
+          isComplete: memberPrediction?.isComplete || false,
+          lastUpdated: memberPrediction?.updatedAt
+        };
+      });
+      
+      setPredictionStatus(predictionStatusData);
       
       // If draft is completed, fetch winners
       if (isCompleted) {
@@ -328,6 +373,9 @@ export default function LeagueDetailPage() {
   // Check if current user is the league creator
   const isLeagueCreator = user && league && user.uid === league.createdBy;
 
+  // Get status for current user
+  const currentUserStatus = predictionStatus.find(p => p.userId === user?.uid);
+
   if (authLoading || (loading && user)) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -366,6 +414,83 @@ export default function LeagueDetailPage() {
       
       {league.description && (
         <p className="text-gray-600 mb-6">{league.description}</p>
+      )}
+      
+      {/* Draft Status Banner */}
+      {draftIsLive && !draftIsCompleted && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6 rounded-lg">
+          <h2 className="text-lg font-semibold text-yellow-800 mb-2">Draft Is Live! 🔴</h2>
+          <p className="text-yellow-700">
+            The draft has started. Predictions are now locked and can&apos;t be changed.
+            {!currentUserStatus?.hasSubmitted && " You did not submit any predictions for this draft."}
+            {currentUserStatus?.hasSubmitted && !currentUserStatus?.isComplete && " Your predictions were saved as incomplete."}
+          </p>
+        </div>
+      )}
+      
+      {/* Your Prediction Status (if not completed) */}
+      {!draftIsLive && !draftIsCompleted && currentUserStatus && (
+        <div className={`${
+          currentUserStatus.hasSubmitted 
+            ? (currentUserStatus.isComplete ? "bg-green-50 border-green-500" : "bg-yellow-50 border-yellow-500") 
+            : "bg-red-50 border-red-500"
+        } border-l-4 p-4 mb-6 rounded-lg`}>
+          <h2 className="text-lg font-semibold mb-2" style={{
+            color: currentUserStatus.hasSubmitted 
+              ? (currentUserStatus.isComplete ? "#065f46" : "#92400e") 
+              : "#991b1b"
+          }}>
+            Your Prediction Status
+          </h2>
+          
+          {!currentUserStatus.hasSubmitted && (
+            <div>
+              <p className="text-red-700 mb-2">
+                You haven&apos;t submitted any predictions yet!
+              </p>
+              <Link 
+                href={`/leagues/${leagueId}/predictions`} 
+                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded mt-2"
+              >
+                Make Predictions
+              </Link>
+            </div>
+          )}
+          
+          {currentUserStatus.hasSubmitted && !currentUserStatus.isComplete && (
+            <div>
+              <p className="text-yellow-700 mb-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 mr-2">
+                  In Progress
+                </span>
+                Your predictions are incomplete. You need to finish them before the draft goes live.
+              </p>
+              <Link 
+                href={`/leagues/${leagueId}/predictions`} 
+                className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded mt-2"
+              >
+                Complete Predictions
+              </Link>
+            </div>
+          )}
+          
+          {currentUserStatus.hasSubmitted && currentUserStatus.isComplete && (
+            <div>
+              <p className="text-green-700 mb-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-2">
+                  Complete
+                </span>
+                Your predictions are complete and ready for the draft!
+              </p>
+              <Link 
+                href={`/leagues/${leagueId}/predictions`} 
+                className="inline-block bg-gray-500 hover:bg-gray-600 text-white font-medium py-2 px-4 rounded mt-2"
+              >
+                View Predictions
+              </Link>
+            </div>
+          )}
+        </div>
       )}
       
       {/* Winners Display (Only show when draft is completed) */}
@@ -531,23 +656,45 @@ export default function LeagueDetailPage() {
           </div>
         </div>
         
-        {/* Members List */}
+        {/* Members List with prediction status */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Members ({members.length})</h2>
           
           <div className="space-y-3">
-            {members.map(member => (
-              <div key={member.id} className="flex items-center">
-                {/* Use the UserAvatar component here instead of conditional rendering */}
-                <UserAvatar 
-                  userId={member.id} 
-                  size="sm" 
-                  className="mr-2"
-                />
-                <span className="text-gray-800">{member.displayName}</span>
-                {member.id === league.createdBy && (
-                  <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
-                )}
+            {predictionStatus.map(memberStatus => (
+              <div key={memberStatus.userId} className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <UserAvatar 
+                    userId={memberStatus.userId} 
+                    size="sm" 
+                    className="mr-2"
+                  />
+                  <span className="text-gray-800">{memberStatus.displayName}</span>
+                  {memberStatus.userId === league?.createdBy && (
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Admin</span>
+                  )}
+                </div>
+                
+                {/* Prediction Status Indicator */}
+                {draftIsLive || draftIsCompleted ? (
+                  <div>
+                    {!memberStatus.hasSubmitted && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        No Predictions
+                      </span>
+                    )}
+                    {memberStatus.hasSubmitted && !memberStatus.isComplete && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        Incomplete
+                      </span>
+                    )}
+                    {memberStatus.hasSubmitted && memberStatus.isComplete && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Complete
+                      </span>
+                    )}
+                  </div>
+                ) : null}
               </div>
             ))}
           </div>
@@ -567,9 +714,12 @@ export default function LeagueDetailPage() {
             
             <Link
               href={`/leagues/${leagueId}/predictions`}
-              className="block w-full bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded text-center"
+              className={`block w-full ${currentUserStatus?.isComplete && !draftIsLive ? 'bg-gray-500 hover:bg-gray-600' : 'bg-green-600 hover:bg-green-700'} text-white font-medium py-2 px-4 rounded text-center`}
             >
-              Make Predictions
+              {draftIsLive ? 'View Predictions' : 
+                currentUserStatus?.hasSubmitted ? 
+                  (currentUserStatus.isComplete ? 'View Predictions' : 'Complete Predictions') : 
+                  'Make Predictions'}
             </Link>
             
             <Link
