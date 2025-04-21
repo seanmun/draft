@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image'; // Add this import
 import { useAuth } from '../hooks/useAuth';
 
 export default function Home() {
@@ -10,6 +11,17 @@ export default function Home() {
 
   return (
     <div className="min-h-[calc(100vh-16rem)] flex flex-col items-center justify-center text-center">
+      {/* Add the logo here, above the welcome text */}
+      <div className="mb-6">
+        <Image 
+          src="/images/ddt_jd.png"
+          alt="Draft Day Trades Logo"
+          width={250}
+          height={250}
+          priority
+        />
+      </div>
+      
       <h1 className="text-4xl font-bold mb-4">Welcome to Draft Day Trades</h1>
       <p className="text-xl mb-8 max-w-2xl">
         Predict draft picks, assign confidence points, and compete with friends across multiple sports!
