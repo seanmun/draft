@@ -8,6 +8,7 @@ import UserAvatar from '../common/UserAvatar';
 import AcknowledgmentsModal from '../modals/AcknowledgmentsModal';
 import PrivacyPolicyModal from '../modals/PrivacyPolicyModal';
 import SupportModal from '../modals/SupportModal';
+import AnnouncementBanner from '../common/AnnouncementBanner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -172,6 +173,10 @@ export default function Layout({ children }: LayoutProps) {
           )}
         </div>
       </header>
+
+      {/* Announcement Banner - Add this right after the header */}
+      <AnnouncementBanner sportType="NFL" draftYear={2025} />
+      
       <main className="flex-grow container mx-auto p-4">
         {children}
       </main>
