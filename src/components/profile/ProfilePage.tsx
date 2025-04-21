@@ -23,12 +23,15 @@ export default function ProfilePage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
   const [username, setUsername] = useState('');
+  const [paymentInfo, setPaymentInfo] = useState('');
   const [avatarType, setAvatarType] = useState('google');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0].value);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [showContinueButton, setShowContinueButton] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -53,9 +56,19 @@ export default function ProfilePage() {
         setUsername(userData.displayName || user.displayName || '');
         setAvatarType(userData.avatarType || 'google');
         setAvatarColor(userData.avatarColor || AVATAR_COLORS[0].value);
+        setPaymentInfo(userData.paymentInfo || '');
+        
+        // If profile is incomplete, mark as new user
+        if (!userData.displayName) {
+          setIsNewUser(true);
+        } else {
+          setIsNewUser(false);
+          setShowContinueButton(true);
+        }
       } else {
         // If no user doc exists yet, use display name from auth if available
         setUsername(user.displayName || '');
+        setIsNewUser(true);
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -70,7 +83,7 @@ export default function ProfilePage() {
     
     if (!user) return;
     
-    // Basic validation
+    // Basic validation - only username is required
     if (!username.trim()) {
       setError('Username cannot be empty');
       return;
@@ -90,9 +103,11 @@ export default function ProfilePage() {
         // Update existing document
         await updateDoc(userRef, {
           displayName: username,
+          paymentInfo: paymentInfo,
           avatarType,
           avatarColor,
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          profileCompleted: true
         });
       } else {
         // Create new document with setDoc
@@ -100,21 +115,29 @@ export default function ProfilePage() {
           id: user.uid,
           email: user.email,
           displayName: username,
+          paymentInfo: paymentInfo,
           avatarType,
           avatarColor,
           photoURL: user.photoURL,
           createdAt: new Date(),
-          updatedAt: new Date()
+          updatedAt: new Date(),
+          profileCompleted: true
         });
       }
       
       setSuccess('Your profile has been updated successfully!');
+      setIsNewUser(false);
+      setShowContinueButton(true);
     } catch (error) {
       console.error('Error updating profile:', error);
       setError('Failed to update profile. Please try again.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleContinue = () => {
+    router.push('/leagues');
   };
 
   // Get user initials for initial-based avatar
@@ -181,11 +204,25 @@ export default function ProfilePage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Your Profile</h1>
-        <Link href="/leagues" className="text-blue-600 hover:underline">
-          Back to Leagues
-        </Link>
+        <h1 className="text-2xl font-bold">
+          {isNewUser ? 'Complete Your Profile' : 'Your Profile'}
+        </h1>
+        
+        {!isNewUser && (
+          <Link href="/leagues" className="text-blue-600 hover:underline">
+            Back to Leagues
+          </Link>
+        )}
       </div>
+      
+      {isNewUser && (
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+          <p className="text-blue-700">
+            Welcome to Draft Day Trades! Please complete your profile to get started.
+            Only your username is required.
+          </p>
+        </div>
+      )}
       
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
@@ -290,9 +327,9 @@ export default function ProfilePage() {
             </p>
           </div>
           
-          <div className="mb-8">
+          <div className="mb-6">
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Username
+              Username <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -301,9 +338,27 @@ export default function ProfilePage() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter your username"
+              required
             />
             <p className="mt-1 text-xs text-gray-500">
               This name will be displayed to other users
+            </p>
+          </div>
+          
+          <div className="mb-8">
+            <label htmlFor="paymentInfo" className="block text-sm font-medium text-gray-700 mb-1">
+              Payment Information
+            </label>
+            <input
+              type="text"
+              id="paymentInfo"
+              value={paymentInfo}
+              onChange={(e) => setPaymentInfo(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Venmo: $username"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Your payment information will be shared with league members for payouts (optional)
             </p>
           </div>
           
@@ -317,10 +372,21 @@ export default function ProfilePage() {
                 ${saving ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              {saving ? 'Saving...' : 'Save Profile'}
+              {saving ? 'Saving...' : isNewUser ? 'Complete Profile' : 'Save Profile'}
             </button>
           </div>
         </form>
+        
+        {showContinueButton && success && (
+          <div className="mt-6 border-t pt-6 flex justify-center">
+            <button
+              onClick={handleContinue}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg"
+            >
+              Continue to Leagues
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,3 +1,4 @@
+// src/lib/firebase.ts
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
@@ -18,9 +19,26 @@ let db: Firestore;
 
 // Check if we're in a browser environment
 if (typeof window !== 'undefined') {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  // Use the explicit project name as the second parameter
+  // Replace "your-project-name" with your actual Firebase project name
+  app = getApps().length === 0 
+    ? initializeApp(firebaseConfig, "your-project-name") 
+    : getApps()[0];
+    
   auth = getAuth(app);
   db = getFirestore(app);
+  
+  // Connect to emulators in development if needed
+  if (process.env.NODE_ENV === 'development' && false) { // Set to true to enable emulators
+    // Uncomment these if you're using Firebase emulators
+    // First, import the emulator functions if you need them:
+    // import { connectAuthEmulator } from 'firebase/auth';
+    // import { connectFirestoreEmulator } from 'firebase/firestore';
+    
+    // Then connect to the emulators:
+    // connectAuthEmulator(auth, 'http://localhost:9099');
+    // connectFirestoreEmulator(db, 'localhost', 8080);
+  }
 }
 
 export { app, auth, db };
