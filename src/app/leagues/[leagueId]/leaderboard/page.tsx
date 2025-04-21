@@ -1,4 +1,3 @@
-// src/app/leagues/[leagueId]/leaderboard/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -6,7 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../../../../lib/firebase';
 import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
-import type { League, Player, Prediction, ActualPick } from '../../../../lib/types';
+import type { League, Player, Prediction, ActualPick, Team } from '../../../../lib/types';
 import UserAvatar from '../../../../components/common/UserAvatar';
 
 // Import the isAdmin utility
@@ -18,8 +17,10 @@ interface UserScore {
   photoURL?: string;
   totalPoints: number;
   possiblePoints: number;
+  potentialPoints: number;
   correctPicks: number;
   totalPicks: number;
+  remainingPicks: number;
 }
 
 // Define an extended ActualPick type that includes an id and timestamp
@@ -36,6 +37,7 @@ export default function LeaderboardPage() {
   
   const [league, setLeague] = useState<League | null>(null);
   const [players, setPlayers] = useState<{[key: string]: Player}>({});
+  const [teams, setTeams] = useState<Team[]>([]);
   const [actualPicks, setActualPicks] = useState<{[key: number]: ActualPickWithId | null}>({});
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [scores, setScores] = useState<UserScore[]>([]);
@@ -45,6 +47,7 @@ export default function LeaderboardPage() {
   
   // Define ADMIN_USER_ID through the isAdmin function
   const checkIsAdmin = (userId: string) => isAdmin(userId);
+  
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -80,6 +83,13 @@ export default function LeaderboardPage() {
       
       setLeague(leagueData);
       
+      // Get teams for this sport and year
+      const teamsQuery = query(
+        collection(db, 'teams'),
+        where('sportType', '==', leagueData.sportType),
+        where('draftYear', '==', leagueData.draftYear)
+      );
+      
       // Get all players for this sport and year
       const playersQuery = query(
         collection(db, 'players'),
@@ -87,7 +97,28 @@ export default function LeaderboardPage() {
         where('draftYear', '==', leagueData.draftYear)
       );
       
-      const playersSnapshot = await getDocs(playersQuery);
+      // Get global draft results from draftResults collection
+      const draftResultsQuery = query(
+        collection(db, 'draftResults'),
+        where('sportType', '==', leagueData.sportType),
+        where('draftYear', '==', leagueData.draftYear)
+      );
+      
+      // Fetch data in parallel
+      const [teamsSnapshot, playersSnapshot, draftResultsSnapshot] = await Promise.all([
+        getDocs(teamsQuery),
+        getDocs(playersQuery),
+        getDocs(draftResultsQuery)
+      ]);
+      
+      // Process teams data
+      const teamsData = teamsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Team[];
+      
+      setTeams(teamsData);
+      
       const playersMap: {[key: string]: Player} = {};
       
       playersSnapshot.docs.forEach(doc => {
@@ -99,14 +130,6 @@ export default function LeaderboardPage() {
       
       setPlayers(playersMap);
       
-      // Get global draft results from draftResults collection
-      const draftResultsQuery = query(
-        collection(db, 'draftResults'),
-        where('sportType', '==', leagueData.sportType),
-        where('draftYear', '==', leagueData.draftYear)
-      );
-      
-      const draftResultsSnapshot = await getDocs(draftResultsQuery);
       const actualPicksMap: {[key: number]: ActualPickWithId | null} = {};
       
       // Initialize with empty picks
@@ -175,8 +198,10 @@ export default function LeaderboardPage() {
           photoURL: memberId === user!.uid ? user!.photoURL || undefined : undefined,
           totalPoints: 0,
           possiblePoints: 0,
+          potentialPoints: 0,
           correctPicks: 0,
-          totalPicks: 0
+          totalPicks: 0,
+          remainingPicks: 0
         });
       });
       
@@ -187,8 +212,10 @@ export default function LeaderboardPage() {
         
         let totalPoints = 0;
         let possiblePoints = 0;
+        let potentialPoints = 0;
         let correctPicks = 0;
         let totalPicks = 0;
+        let remainingPicks = 0;
         
         prediction.picks.forEach(pick => {
           const actualPick = actualPicksMap[pick.position];
@@ -197,17 +224,27 @@ export default function LeaderboardPage() {
           possiblePoints += pick.confidence;
           totalPicks++;
           
-          // If there's a match, add points
-          if (actualPick && actualPick.playerId === pick.playerId) {
-            totalPoints += pick.confidence;
-            correctPicks++;
+          if (actualPick) {
+            // If there's an actual pick (draft has happened for this position)
+            if (actualPick.playerId === pick.playerId) {
+              // Correct pick
+              totalPoints += pick.confidence;
+              potentialPoints += pick.confidence;
+              correctPicks++;
+            }
+          } else {
+            // Draft hasn't happened for this position yet
+            potentialPoints += pick.confidence; // Add potential points
+            remainingPicks++;
           }
         });
         
         userScore.totalPoints = totalPoints;
         userScore.possiblePoints = possiblePoints;
+        userScore.potentialPoints = potentialPoints;
         userScore.correctPicks = correctPicks;
         userScore.totalPicks = totalPicks;
+        userScore.remainingPicks = remainingPicks;
       });
       
       // Sort by total points (highest first)
@@ -230,19 +267,8 @@ export default function LeaderboardPage() {
     return predictions.find(p => p.userId === userId) || null;
   };
   
-  // Mock team data
-  const mockTeamPicks: {[key: number]: {team: string}} = {
-    1: { team: 'Bears' },
-    2: { team: 'Commanders' },
-    3: { team: 'Patriots' },
-    4: { team: 'Cardinals' },
-    5: { team: 'Chargers' },
-    6: { team: 'Giants' },
-    7: { team: 'Titans' },
-    8: { team: 'Falcons' },
-    9: { team: 'Bears' },
-    10: { team: 'Jets' },
-    // Add more teams for the remaining picks
+  const getTeamByPick = (position: number) => {
+    return teams.find(t => t.pick === position) || null;
   };
   
   if (authLoading || (loading && user)) {
@@ -332,7 +358,12 @@ export default function LeaderboardPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-gray-900">{score.totalPoints}</div>
-                      <div className="text-xs text-gray-500">{score.correctPicks}/{score.totalPicks} correct</div>
+                      <div className="text-xs text-gray-500">
+                        {score.correctPicks}/{score.totalPicks} correct • 
+                        <span className="text-blue-600 ml-1" title="Potential points if all remaining picks are correct">
+                          {score.potentialPoints} potential
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </li>
@@ -357,10 +388,19 @@ export default function LeaderboardPage() {
               }
             </h3>
             {selectedUser && (
-              <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                Points: {scores.find(s => s.userId === selectedUser)?.totalPoints} / 
-                {scores.find(s => s.userId === selectedUser)?.possiblePoints}
-              </p>
+              <div className="mt-1 max-w-2xl text-sm text-gray-500">
+                <p>
+                  Current Points: {scores.find(s => s.userId === selectedUser)?.totalPoints} / 
+                  {scores.find(s => s.userId === selectedUser)?.possiblePoints}
+                </p>
+                <p className="text-blue-600">
+                  Potential Points: {scores.find(s => s.userId === selectedUser)?.potentialPoints} / 
+                  {scores.find(s => s.userId === selectedUser)?.possiblePoints}
+                  <span className="text-xs ml-2 text-gray-500">
+                    (if all remaining picks are correct)
+                  </span>
+                </p>
+              </div>
             )}
           </div>
           
@@ -369,20 +409,23 @@ export default function LeaderboardPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12 md:px-3">
-                      Pick
+                    <th className="px-1 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8 md:px-2">
+                      #
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 md:w-28 md:px-3">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24 md:w-28 md:px-3">
                       Team
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3 w-40 md:w-64">
                       Prediction
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3 w-40 md:w-64">
                       Actual Pick
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20 md:w-24 md:px-3">
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20 md:w-24 md:px-3">
                       Points
+                    </th>
+                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20 md:w-24 md:px-3">
+                      Conf
                     </th>
                   </tr>
                 </thead>
@@ -391,8 +434,8 @@ export default function LeaderboardPage() {
                     const userPrediction = getUserPrediction(selectedUser);
                     if (!userPrediction) {
                       return (
-                        <tr>
-                          <td colSpan={5} className="px-4 py-4 text-center text-gray-500">
+                                                  <tr>
+                          <td colSpan={6} className="px-4 py-4 text-center text-gray-500">
                             No predictions found for this user
                           </td>
                         </tr>
@@ -405,16 +448,26 @@ export default function LeaderboardPage() {
                         const predictedPlayer = getPlayerById(pick.playerId);
                         const actualPick = actualPicks[pick.position];
                         const actualPlayer = actualPick ? getPlayerById(actualPick.playerId) : null;
-                        const teamInfo = mockTeamPicks[pick.position] || { team: 'TBD' };
+                        const team = getTeamByPick(pick.position);
                         const isCorrect = actualPick && actualPick.playerId === pick.playerId;
                         
                         return (
                           <tr key={pick.position} className={isCorrect ? 'bg-green-50' : ''}>
-                            <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 md:px-3">
+                            <td className="px-1 py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900 md:px-2">
                               {pick.position}
                             </td>
                             <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-900 md:px-3">
-                              {teamInfo.team}
+                              {team ? (
+                                <div className="flex items-center">
+                                  {team.logoUrl && (
+                                    <img src={team.logoUrl} alt={team.name} className="h-5 w-5 mr-2" />
+                                  )}
+                                  {/* Only show team name on desktop */}
+                                  <span className="hidden md:inline">{team.name}</span>
+                                </div>
+                              ) : (
+                                `Pick ${pick.position}`
+                              )}
                             </td>
                             <td className="px-2 py-3 text-xs md:text-sm text-gray-500 md:px-3">
                               {predictedPlayer ? (
@@ -442,12 +495,15 @@ export default function LeaderboardPage() {
                             </td>
                             <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm md:px-3">
                               <div className="flex items-center">
-                                <span className={`font-medium ${isCorrect ? 'text-green-600' : 'text-gray-400'}`}>
-                                  {isCorrect ? pick.confidence : '0'}
+                                <span className={`font-medium ${isCorrect ? 'text-green-600' : actualPick ? 'text-gray-400' : 'text-blue-600'}`}>
+                                  {isCorrect ? pick.confidence : (actualPick ? '0' : '?')}
                                 </span>
                                 <span className="text-gray-400 mx-1">/</span>
                                 <span className="text-gray-500">{pick.confidence}</span>
                               </div>
+                            </td>
+                            <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm md:px-3">
+                              <span className="font-medium text-gray-900">{pick.confidence}</span>
                             </td>
                           </tr>
                         );
