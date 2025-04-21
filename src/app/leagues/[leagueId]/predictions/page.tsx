@@ -29,6 +29,8 @@ export default function PredictionsPage() {
   // For the UI state
   const [availableConfidencePoints, setAvailableConfidencePoints] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [positionFilter, setPositionFilter] = useState<string>('');
+  const [availablePositions, setAvailablePositions] = useState<string[]>([]);
   const [filteredPlayers, setFilteredPlayers] = useState<Player[]>([]);
   const [editingPosition, setEditingPosition] = useState<number | null>(null);
   const [showConfidenceSelector, setShowConfidenceSelector] = useState<number | null>(null);
@@ -45,7 +47,15 @@ export default function PredictionsPage() {
   }, [leagueId, user, authLoading, router]);
   
   useEffect(() => {
-    // Filter players based on search term
+    // Extract unique positions from players for the filter dropdown
+    if (players.length > 0) {
+      const positions = [...new Set(players.map(player => player.position))].sort();
+      setAvailablePositions(positions);
+    }
+  }, [players]);
+  
+  useEffect(() => {
+    // Filter players based on search term and position filter
     let filtered = [...players];
     
     if (searchTerm.trim() !== '') {
@@ -55,6 +65,11 @@ export default function PredictionsPage() {
         player.position.toLowerCase().includes(term) ||
         (player.school && player.school.toLowerCase().includes(term))
       );
+    }
+    
+    // Apply position filter if selected
+    if (positionFilter) {
+      filtered = filtered.filter(player => player.position === positionFilter);
     }
     
     // Sort by rank (ascending order - lower rank numbers first)
@@ -72,7 +87,7 @@ export default function PredictionsPage() {
     });
     
     setFilteredPlayers(filtered);
-  }, [searchTerm, players]);
+  }, [searchTerm, positionFilter, players]);
   
   useEffect(() => {
     // Update available confidence points whenever predictions change
@@ -247,6 +262,7 @@ export default function PredictionsPage() {
     // Close the selection modal
     setEditingPosition(null);
     setSearchTerm('');
+    setPositionFilter('');
   };
   
   const handleConfidenceSelect = (position: number, confidence: number) => {
@@ -454,9 +470,9 @@ export default function PredictionsPage() {
                 <th className="px-1 py-2 text-center w-10 md:w-12">
                   {/* X icon column - no heading */}
                 </th>
-                {/* Reserved space for future additions */}
-                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3">
-                  {/* Future content */}
+                {/* Rank column */}
+                <th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-3 w-16">
+                  Rank
                 </th>
               </tr>
             </thead>
@@ -582,9 +598,15 @@ export default function PredictionsPage() {
                       </button>
                     )}
                   </td>
-                  {/* Reserved cell for future content */}
-                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm md:px-3">
-                    {/* Future content */}
+                  {/* Rank column */}
+                  <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm md:px-3 text-gray-500">
+                    {player && player.rank ? (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        #{player.rank}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">–</span>
+                    )}
                   </td>
                 </tr>
               );
@@ -618,6 +640,7 @@ export default function PredictionsPage() {
                 onClick={() => {
                   setEditingPosition(null);
                   setSearchTerm('');
+                  setPositionFilter('');
                 }}
                 className="text-gray-400 hover:text-gray-500 text-2xl"
               >
@@ -625,19 +648,34 @@ export default function PredictionsPage() {
               </button>
             </div>
             
-            <div className="mb-4">
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search players by name, position, or school"
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+            {/* Search and filtering controls */}
+            <div className="mb-4 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
+              <div className="flex-1">
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search players by name, position, or school"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="md:w-1/4">
+                <select
+                  value={positionFilter}
+                  onChange={(e) => setPositionFilter(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Positions</option>
+                  {availablePositions.map(pos => (
+                    <option key={pos} value={pos}>{pos}</option>
+                  ))}
+                </select>
+              </div>
             </div>
             
             <div className="max-h-96 overflow-y-auto bg-gray-50 rounded-lg">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-100">
+                <thead className="bg-gray-100 sticky top-0">
                   <tr>
                     <th className="px-4 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Name
@@ -648,13 +686,16 @@ export default function PredictionsPage() {
                     <th className="px-4 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       School
                     </th>
+                    <th className="px-4 py-2 md:px-6 md:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                      Rank
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredPlayers.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="px-4 py-2 md:px-6 md:py-4 text-center text-gray-500">
-                        No players found. Please try a different search term.
+                      <td colSpan={4} className="px-4 py-2 md:px-6 md:py-4 text-center text-gray-500">
+                        No players found. Please try a different search term or position filter.
                       </td>
                     </tr>
                   ) : (
@@ -682,6 +723,9 @@ export default function PredictionsPage() {
                           <td className="px-4 py-2 md:px-6 md:py-3 whitespace-nowrap text-xs md:text-sm text-gray-500">
                             {player.school || '–'}
                           </td>
+                          <td className="px-4 py-2 md:px-6 md:py-3 whitespace-nowrap text-xs md:text-sm text-gray-500">
+                            {player.rank || '–'}
+                          </td>
                         </tr>
                       );
                     })
@@ -695,6 +739,7 @@ export default function PredictionsPage() {
                 onClick={() => {
                   setEditingPosition(null);
                   setSearchTerm('');
+                  setPositionFilter('');
                 }}
                 className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded"
               >

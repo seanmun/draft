@@ -3,6 +3,7 @@ export interface UserProfile {
   email: string;
   displayName: string;
   photoURL?: string;
+  paymentInfo?: string; 
 }
 
 export type SportType = 'NFL' | 'NBA' | 'WNBA' | 'NHL' | 'MLB';

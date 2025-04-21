@@ -5,7 +5,7 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../../../../lib/firebase';
 import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
-import type { League, Player, Prediction, ActualPick, Team } from '../../../../lib/types';
+import type { League, Player, Prediction, ActualPick, Team, UserProfile } from '../../../../lib/types';
 import UserAvatar from '../../../../components/common/UserAvatar';
 
 // Import the isAdmin utility
@@ -15,6 +15,7 @@ interface UserScore {
   userId: string;
   displayName: string;
   photoURL?: string;
+  paymentInfo?: string;
   totalPoints: number;
   possiblePoints: number;
   potentialPoints: number;
@@ -45,6 +46,8 @@ export default function LeaderboardPage() {
   const [error, setError] = useState('');
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [draftIsLive, setDraftIsLive] = useState<boolean>(false);
+  const [draftIsCompleted, setDraftIsCompleted] = useState<boolean>(false);
+  const [adminNote, setAdminNote] = useState<string>('');
   
   // Define ADMIN_USER_ID through the isAdmin function
   const checkIsAdmin = (userId: string) => isAdmin(userId);
@@ -61,6 +64,8 @@ export default function LeaderboardPage() {
   }, [leagueId, user, authLoading, router]);
   
   const fetchLeagueAndData = async () => {
+    if (!user) return; // Early return if user is null
+    
     setLoading(true);
     try {
       // Get league data
@@ -75,7 +80,7 @@ export default function LeaderboardPage() {
       const leagueData = { id: leagueDoc.id, ...leagueDoc.data() } as League;
       
       // Check if user is a member
-      if (!leagueData.members.includes(user!.uid)) {
+      if (!leagueData.members.includes(user.uid)) {
         setError('You are not a member of this league');
         setLoading(false);
         return;
@@ -167,6 +172,20 @@ export default function LeaderboardPage() {
       
       setActualPicks(actualPicksMap);
       
+      // Get league-specific note if available
+      const leagueSettingsQuery = query(
+        collection(db, 'leagueSettings'),
+        where('leagueId', '==', leagueId)
+      );
+      
+      const leagueSettingsSnapshot = await getDocs(leagueSettingsQuery);
+      let leagueNote = '';
+      
+      if (!leagueSettingsSnapshot.empty) {
+        const settingsData = leagueSettingsSnapshot.docs[0].data();
+        leagueNote = settingsData.note || '';
+      }
+      
       // Get all predictions for this league
       const predictionsQuery = query(
         collection(db, 'predictions'),
@@ -178,32 +197,46 @@ export default function LeaderboardPage() {
       
       setPredictions(predictionsData);
       
-      // Calculate scores
-      const userScores: UserScore[] = [];
-      const userMap: {[key: string]: string} = {};
+      // Get all user profiles to gather payment information
+      const userProfilesMap: Record<string, UserProfile> = {};
       
-      // Add the current user to the map
-      userMap[user!.uid] = user!.displayName || 'Anonymous';
-      
-      // Try to fetch user profiles for all members
+      // Fetch user profiles for all league members
       for (const memberId of leagueData.members) {
         try {
           const userDoc = await getDoc(doc(db, 'users', memberId));
+          
           if (userDoc.exists()) {
             const userData = userDoc.data();
-            userMap[memberId] = userData.displayName || `User ${memberId.substring(0, 5)}`;
+            userProfilesMap[memberId] = {
+              id: memberId,
+              email: userData.email || '',
+              displayName: userData.displayName || `User ${memberId.substring(0, 5)}`,
+              photoURL: userData.photoURL,
+              paymentInfo: userData.paymentInfo || ''
+            };
           }
         } catch (e) {
           console.error(`Error fetching user ${memberId}:`, e);
         }
       }
       
+      // Calculate scores
+      const userScores: UserScore[] = [];
+      
       // Create initial scores for all league members
       leagueData.members.forEach(memberId => {
+        const userProfile = userProfilesMap[memberId] || {
+          id: memberId,
+          displayName: memberId === user.uid ? user.displayName || 'Anonymous' : `User ${memberId.substring(0, 5)}`,
+          email: memberId === user.uid ? user.email || '' : '',
+          photoURL: memberId === user.uid ? user.photoURL || undefined : undefined
+        };
+        
         userScores.push({
           userId: memberId,
-          displayName: userMap[memberId] || `User ${memberId.substring(0, 5)}`,
-          photoURL: memberId === user!.uid ? user!.photoURL || undefined : undefined,
+          displayName: userProfile.displayName,
+          photoURL: userProfile.photoURL,
+          paymentInfo: userProfile.paymentInfo,
           totalPoints: 0,
           possiblePoints: 0,
           potentialPoints: 0,
@@ -262,13 +295,19 @@ export default function LeaderboardPage() {
       
       // Process draft settings
       let isLive = false;
+      let isCompleted = false;
+      let globalNote = '';
       
       if (!draftSettingsSnapshot.empty) {
         const settingsData = draftSettingsSnapshot.docs[0].data();
         isLive = settingsData.isLive === true;
+        isCompleted = settingsData.isCompleted === true;
+        globalNote = settingsData.adminNote || '';
       }
       
       setDraftIsLive(isLive);
+      setDraftIsCompleted(isCompleted);
+      setAdminNote(leagueNote || globalNote);
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to load leaderboard data');
@@ -333,7 +372,102 @@ export default function LeaderboardPage() {
         </p>
       </div>
       
-      {!draftIsLive && (
+      {/* Winners Showcase (Only show when draft is completed) */}
+      {draftIsCompleted && scores.length > 0 && (
+        <div className="bg-purple-50 border-l-4 border-purple-500 p-6 mb-6 rounded-lg">
+          <h2 className="text-xl font-bold text-purple-800 mb-4">🏆 Draft Complete - Winners 🏆</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-4">
+            {/* First Place */}
+            {scores.length > 0 && (
+              <div className="bg-yellow-100 rounded-lg p-4 border border-yellow-300 text-center">
+                <div className="text-yellow-600 text-4xl mb-1">🥇</div>
+                <div className="text-lg font-bold text-gray-900">1st Place</div>
+                <div className="flex justify-center mt-2">
+                  <UserAvatar 
+                    userId={scores[0]?.userId || ''}
+                    size="md"
+                    className="mx-auto"
+                  />
+                </div>
+                <div className="mt-2 font-semibold">{scores[0]?.displayName}</div>
+                <div className="text-2xl font-bold text-yellow-700 mt-1">{scores[0]?.totalPoints} pts</div>
+                <div className="text-sm text-gray-700 mt-1">
+                  {scores[0]?.correctPicks}/{scores[0]?.totalPicks} correct picks
+                </div>
+                {scores[0]?.paymentInfo && (
+                  <div className="mt-3 p-2 bg-white rounded border border-yellow-200">
+                    <p className="text-sm font-medium text-gray-700">Payment Info:</p>
+                    <p className="text-sm text-gray-600">{scores[0]?.paymentInfo}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Second Place (if exists) */}
+            {scores.length > 1 && (
+              <div className="bg-gray-100 rounded-lg p-4 border border-gray-300 text-center">
+                <div className="text-gray-600 text-4xl mb-1">🥈</div>
+                <div className="text-lg font-bold text-gray-900">2nd Place</div>
+                <div className="flex justify-center mt-2">
+                  <UserAvatar 
+                    userId={scores[1]?.userId || ''}
+                    size="md"
+                    className="mx-auto"
+                  />
+                </div>
+                <div className="mt-2 font-semibold">{scores[1]?.displayName}</div>
+                <div className="text-2xl font-bold text-gray-700 mt-1">{scores[1]?.totalPoints} pts</div>
+                <div className="text-sm text-gray-700 mt-1">
+                  {scores[1]?.correctPicks}/{scores[1]?.totalPicks} correct picks
+                </div>
+                {scores[1]?.paymentInfo && (
+                  <div className="mt-3 p-2 bg-white rounded border border-gray-200">
+                    <p className="text-sm font-medium text-gray-700">Payment Info:</p>
+                    <p className="text-sm text-gray-600">{scores[1]?.paymentInfo}</p>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Third Place (if exists) */}
+            {scores.length > 2 && (
+              <div className="bg-orange-100 rounded-lg p-4 border border-orange-300 text-center">
+                <div className="text-orange-600 text-4xl mb-1">🥉</div>
+                <div className="text-lg font-bold text-gray-900">3rd Place</div>
+                <div className="flex justify-center mt-2">
+                  <UserAvatar 
+                    userId={scores[2]?.userId || ''}
+                    size="md"
+                    className="mx-auto"
+                  />
+                </div>
+                <div className="mt-2 font-semibold">{scores[2]?.displayName}</div>
+                <div className="text-2xl font-bold text-orange-700 mt-1">{scores[2]?.totalPoints} pts</div>
+                <div className="text-sm text-gray-700 mt-1">
+                  {scores[2]?.correctPicks}/{scores[2]?.totalPicks} correct picks
+                </div>
+                {scores[2]?.paymentInfo && (
+                  <div className="mt-3 p-2 bg-white rounded border border-orange-200">
+                    <p className="text-sm font-medium text-gray-700">Payment Info:</p>
+                    <p className="text-sm text-gray-600">{scores[2]?.paymentInfo}</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Admin Note */}
+          {adminNote && (
+            <div className="bg-white rounded-lg p-4 border border-purple-200 mt-4">
+              <h3 className="font-bold text-purple-800 mb-2">League Notes</h3>
+              <div className="text-gray-700 whitespace-pre-line">{adminNote}</div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {!draftIsLive && !draftIsCompleted && (
         <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
           <h2 className="text-lg font-semibold text-yellow-800 mb-2">Draft Not Yet Live</h2>
           <p className="text-yellow-700">
@@ -343,8 +477,8 @@ export default function LeaderboardPage() {
       )}
       
       {/* Main content - conditionally render based on draft status */}
-      {draftIsLive ? (
-        /* Original content when draft is live */
+      {draftIsLive || draftIsCompleted ? (
+        /* Original content when draft is live or completed */
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Leaderboard */}
           <div className="bg-white rounded-lg shadow overflow-hidden lg:col-span-1">
@@ -363,7 +497,9 @@ export default function LeaderboardPage() {
                     key={score.userId} 
                     className={`px-4 py-4 hover:bg-gray-50 cursor-pointer ${
                       selectedUser === score.userId ? 'bg-blue-50' : ''
-                    }`}
+                    } ${draftIsCompleted && index < 3 ? 'border-l-4 border-' + (
+                      index === 0 ? 'yellow-400' : index === 1 ? 'gray-400' : 'orange-400'
+                    ) : ''}`}
                     onClick={() => setSelectedUser(score.userId)}
                   >
                     <div className="flex items-center">
@@ -383,15 +519,32 @@ export default function LeaderboardPage() {
                               You
                             </span>
                           )}
+                          {draftIsCompleted && index === 0 && (
+                            <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                              1st 🏆
+                            </span>
+                          )}
+                          {draftIsCompleted && index === 1 && (
+                            <span className="ml-2 text-xs bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                              2nd 🥈
+                            </span>
+                          )}
+                          {draftIsCompleted && index === 2 && (
+                            <span className="ml-2 text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                              3rd 🥉
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="text-lg font-bold text-gray-900">{score.totalPoints}</div>
                         <div className="text-xs text-gray-500">
-                          {score.correctPicks}/{score.totalPicks} correct • 
-                          <span className="text-blue-600 ml-1" title="Potential points if all remaining picks are correct">
-                            {score.potentialPoints} potential
-                          </span>
+                          {score.correctPicks}/{score.totalPicks} correct
+                          {!draftIsCompleted && (
+                            <span className="text-blue-600 ml-1" title="Potential points if all remaining picks are correct">
+                              • {score.potentialPoints} potential
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -422,13 +575,20 @@ export default function LeaderboardPage() {
                     Current Points: {scores.find(s => s.userId === selectedUser)?.totalPoints} / 
                     {scores.find(s => s.userId === selectedUser)?.possiblePoints}
                   </p>
-                  <p className="text-blue-600">
-                    Potential Points: {scores.find(s => s.userId === selectedUser)?.potentialPoints} / 
-                    {scores.find(s => s.userId === selectedUser)?.possiblePoints}
-                    <span className="text-xs ml-2 text-gray-500">
-                      (if all remaining picks are correct)
-                    </span>
-                  </p>
+                  {!draftIsCompleted && (
+                    <p className="text-blue-600">
+                      Potential Points: {scores.find(s => s.userId === selectedUser)?.potentialPoints} / 
+                      {scores.find(s => s.userId === selectedUser)?.possiblePoints}
+                      <span className="text-xs ml-2 text-gray-500">
+                        (if all remaining picks are correct)
+                      </span>
+                    </p>
+                  )}
+                  {draftIsCompleted && selectedUser && scores.find(s => s.userId === selectedUser)?.paymentInfo && (
+                    <p className="text-purple-600 mt-1">
+                      <span className="font-medium">Payment Info:</span> {scores.find(s => s.userId === selectedUser)?.paymentInfo}
+                    </p>
+                  )}
                 </div>
               )}
             </div>

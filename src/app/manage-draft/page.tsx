@@ -26,7 +26,10 @@ export default function GlobalDraftManager() {
   const [success, setSuccess] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
   const [draftIsLive, setDraftIsLive] = useState<boolean>(false);
+  const [draftIsCompleted, setDraftIsCompleted] = useState<boolean>(false);
   const [updatingLiveStatus, setUpdatingLiveStatus] = useState<boolean>(false);
+  const [updatingCompletedStatus, setUpdatingCompletedStatus] = useState<boolean>(false);
+  const [adminNote, setAdminNote] = useState<string>('');
 
   // For the UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -148,13 +151,19 @@ export default function GlobalDraftManager() {
         
         const settingsSnapshot = await getDocs(settingsQuery);
         let isLive = false;
+        let isCompleted = false;
+        let note = '';
         
         if (!settingsSnapshot.empty) {
           const settingsData = settingsSnapshot.docs[0].data();
           isLive = settingsData.isLive === true;
+          isCompleted = settingsData.isCompleted === true;
+          note = settingsData.adminNote || '';
         }
         
         setDraftIsLive(isLive);
+        setDraftIsCompleted(isCompleted);
+        setAdminNote(note);
       } catch (settingsError) {
         console.error('Error fetching draft settings:', settingsError);
       }
@@ -264,6 +273,8 @@ export default function GlobalDraftManager() {
           sportType,
           draftYear,
           isLive: newStatus,
+          isCompleted: draftIsCompleted,
+          adminNote: adminNote,
           lastUpdatedBy: user.uid,
           lastUpdatedAt: serverTimestamp()
         });
@@ -284,6 +295,100 @@ export default function GlobalDraftManager() {
       setError('Failed to update draft live status');
     } finally {
       setUpdatingLiveStatus(false);
+    }
+  };
+
+  const toggleDraftCompleted = async () => {
+    if (!user) return;
+    
+    try {
+      setUpdatingCompletedStatus(true);
+      setError('');
+      setSuccess('');
+      
+      // Query for existing draft settings
+      const settingsQuery = query(
+        collection(db, 'draftSettings'),
+        where('sportType', '==', sportType),
+        where('draftYear', '==', draftYear)
+      );
+      
+      const settingsSnapshot = await getDocs(settingsQuery);
+      const newStatus = !draftIsCompleted;
+      
+      if (settingsSnapshot.empty) {
+        // Create new settings if none exist
+        await addDoc(collection(db, 'draftSettings'), {
+          sportType,
+          draftYear,
+          isLive: draftIsLive,
+          isCompleted: newStatus,
+          adminNote: adminNote,
+          lastUpdatedBy: user.uid,
+          lastUpdatedAt: serverTimestamp()
+        });
+      } else {
+        // Update existing settings
+        const settingsDoc = settingsSnapshot.docs[0];
+        await updateDoc(doc(db, 'draftSettings', settingsDoc.id), {
+          isCompleted: newStatus,
+          adminNote: adminNote,
+          lastUpdatedBy: user.uid,
+          lastUpdatedAt: serverTimestamp()
+        });
+      }
+      
+      setDraftIsCompleted(newStatus);
+      setSuccess(`Draft is now marked as ${newStatus ? 'COMPLETED' : 'IN PROGRESS'}`);
+    } catch (error) {
+      console.error('Error toggling draft completed status:', error);
+      setError('Failed to update draft completed status');
+    } finally {
+      setUpdatingCompletedStatus(false);
+    }
+  };
+
+  const saveAdminNote = async () => {
+    if (!user) return;
+    
+    try {
+      setError('');
+      setSuccess('');
+      
+      // Query for existing draft settings
+      const settingsQuery = query(
+        collection(db, 'draftSettings'),
+        where('sportType', '==', sportType),
+        where('draftYear', '==', draftYear)
+      );
+      
+      const settingsSnapshot = await getDocs(settingsQuery);
+      
+      if (settingsSnapshot.empty) {
+        // Create new settings if none exist
+        await addDoc(collection(db, 'draftSettings'), {
+          sportType,
+          draftYear,
+          isLive: draftIsLive,
+          isCompleted: draftIsCompleted,
+          adminNote: adminNote,
+          lastUpdatedBy: user.uid,
+          lastUpdatedAt: serverTimestamp()
+        });
+      } else {
+        // Update existing settings
+        const settingsDoc = settingsSnapshot.docs[0];
+        await updateDoc(doc(db, 'draftSettings', settingsDoc.id), {
+          adminNote: adminNote,
+          lastUpdatedBy: user.uid,
+          lastUpdatedAt: serverTimestamp()
+        });
+      }
+      
+      setSuccess('Admin note has been saved successfully!');
+    } catch (error) {
+      console.error('Error saving admin note:', error);
+      setError('Failed to save admin note');
     }
   };
   
@@ -368,34 +473,76 @@ export default function GlobalDraftManager() {
               <option value="60">60</option>
             </select>
           </div>
-          
-          <div className="flex-1 flex items-end justify-end">
-            <div className="flex flex-col items-end">
-              <span className="block text-gray-700 mb-2 text-right">
-                Draft Visibility
+        </div>
+      </div>
+
+      {/* Draft Status Controls */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Draft Status Controls</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="flex items-center">
+            <span className="mr-2">Draft Visibility:</span>
+            <button
+              onClick={toggleDraftLive}
+              className={`px-4 py-2 rounded ${
+                draftIsLive 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : 'bg-red-600 hover:bg-red-700'
+              } text-white`}
+              disabled={updatingLiveStatus}
+            >
+              {draftIsLive ? 'LIVE' : 'HIDDEN'}
+            </button>
+            {draftIsLive && (
+              <span className="ml-3 text-xs text-green-600">
+                Predictions are now visible to all users and locked for editing
               </span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={draftIsLive}
-                  onChange={toggleDraftLive}
-                  disabled={updatingLiveStatus}
-                  className="sr-only peer"
-                />
-                <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
-                <span className="ms-3 text-sm font-medium text-gray-900">
-                  {draftIsLive ? 'LIVE' : 'Hidden'}
-                </span>
-              </label>
-              
-              {draftIsLive && (
-                <p className="text-xs text-green-600 mt-1">
-                  Predictions are now visible to all users and locked for editing
-                </p>
-              )}
-            </div>
+            )}
+          </div>
+          
+          <div className="flex items-center">
+            <span className="mr-2">Draft Status:</span>
+            <button
+              onClick={toggleDraftCompleted}
+              className={`px-4 py-2 rounded ${
+                draftIsCompleted 
+                  ? 'bg-purple-600 hover:bg-purple-700' 
+                  : 'bg-gray-600 hover:bg-gray-700'
+              } text-white`}
+              disabled={updatingCompletedStatus}
+            >
+              {draftIsCompleted ? 'COMPLETED' : 'IN PROGRESS'}
+            </button>
+            {draftIsCompleted && (
+              <span className="ml-3 text-xs text-purple-600">
+                Leaderboards will now show final winners and payment info
+              </span>
+            )}
           </div>
         </div>
+      </div>
+      
+      {/* Admin Note for Winners */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">Admin Notes (For Winners & Payment Info)</h2>
+        <p className="text-gray-600 mb-3">
+          Enter notes that will be displayed to league members on the leaderboard when draft is completed. 
+          Include payment instructions for winners.
+        </p>
+        
+        <textarea
+          value={adminNote}
+          onChange={(e) => setAdminNote(e.target.value)}
+          placeholder="Enter payment details and any additional information for league members... (e.g., 'Please pay 1st place winner @venmo-username')"
+          className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        
+        <button
+          onClick={saveAdminNote}
+          className="mt-3 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded"
+        >
+          Save Note
+        </button>
       </div>
       
       {error && (
