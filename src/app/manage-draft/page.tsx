@@ -1,8 +1,7 @@
-// src/app/manage-draft/page.tsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
@@ -26,6 +25,8 @@ export default function GlobalDraftManager() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [teams, setTeams] = useState<Team[]>([]);
+  const [draftIsLive, setDraftIsLive] = useState<boolean>(false);
+  const [updatingLiveStatus, setUpdatingLiveStatus] = useState<boolean>(false);
 
   // For the UI state
   const [searchTerm, setSearchTerm] = useState('');
@@ -111,7 +112,7 @@ export default function GlobalDraftManager() {
         };
       });
 
-       // Also fetch teams
+      // Also fetch teams
       const teamsQuery = query(
         collection(db, 'teams'),
         where('sportType', '==', sportType),
@@ -136,6 +137,27 @@ export default function GlobalDraftManager() {
       }
       
       setActualPicks(picks);
+      
+      // Get draft settings
+      try {
+        const settingsQuery = query(
+          collection(db, 'draftSettings'),
+          where('sportType', '==', sportType),
+          where('draftYear', '==', draftYear)
+        );
+        
+        const settingsSnapshot = await getDocs(settingsQuery);
+        let isLive = false;
+        
+        if (!settingsSnapshot.empty) {
+          const settingsData = settingsSnapshot.docs[0].data();
+          isLive = settingsData.isLive === true;
+        }
+        
+        setDraftIsLive(isLive);
+      } catch (settingsError) {
+        console.error('Error fetching draft settings:', settingsError);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to load player data');
@@ -218,6 +240,52 @@ export default function GlobalDraftManager() {
     }
   };
   
+  const toggleDraftLive = async () => {
+    if (!user) return;
+    
+    try {
+      setUpdatingLiveStatus(true);
+      setError('');
+      setSuccess('');
+      
+      // Query for existing draft settings
+      const settingsQuery = query(
+        collection(db, 'draftSettings'),
+        where('sportType', '==', sportType),
+        where('draftYear', '==', draftYear)
+      );
+      
+      const settingsSnapshot = await getDocs(settingsQuery);
+      const newStatus = !draftIsLive;
+      
+      if (settingsSnapshot.empty) {
+        // Create new settings if none exist
+        await addDoc(collection(db, 'draftSettings'), {
+          sportType,
+          draftYear,
+          isLive: newStatus,
+          lastUpdatedBy: user.uid,
+          lastUpdatedAt: serverTimestamp()
+        });
+      } else {
+        // Update existing settings
+        const settingsDoc = settingsSnapshot.docs[0];
+        await updateDoc(doc(db, 'draftSettings', settingsDoc.id), {
+          isLive: newStatus,
+          lastUpdatedBy: user.uid,
+          lastUpdatedAt: serverTimestamp()
+        });
+      }
+      
+      setDraftIsLive(newStatus);
+      setSuccess(`Draft is now ${newStatus ? 'LIVE' : 'hidden'}`);
+    } catch (error) {
+      console.error('Error toggling draft live status:', error);
+      setError('Failed to update draft live status');
+    } finally {
+      setUpdatingLiveStatus(false);
+    }
+  };
   
   if (authLoading || (loading && user)) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
@@ -299,6 +367,33 @@ export default function GlobalDraftManager() {
               <option value="32">32</option>
               <option value="60">60</option>
             </select>
+          </div>
+          
+          <div className="flex-1 flex items-end justify-end">
+            <div className="flex flex-col items-end">
+              <span className="block text-gray-700 mb-2 text-right">
+                Draft Visibility
+              </span>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={draftIsLive}
+                  onChange={toggleDraftLive}
+                  disabled={updatingLiveStatus}
+                  className="sr-only peer"
+                />
+                <div className="w-14 h-7 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-blue-600"></div>
+                <span className="ms-3 text-sm font-medium text-gray-900">
+                  {draftIsLive ? 'LIVE' : 'Hidden'}
+                </span>
+              </label>
+              
+              {draftIsLive && (
+                <p className="text-xs text-green-600 mt-1">
+                  Predictions are now visible to all users and locked for editing
+                </p>
+              )}
+            </div>
           </div>
         </div>
       </div>

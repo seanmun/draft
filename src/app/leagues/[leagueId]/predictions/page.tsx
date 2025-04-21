@@ -24,6 +24,7 @@ export default function PredictionsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [draftIsLive, setDraftIsLive] = useState<boolean>(false);
   
   // For the UI state
   const [availableConfidencePoints, setAvailableConfidencePoints] = useState<number[]>([]);
@@ -123,10 +124,18 @@ export default function PredictionsPage() {
         where('draftYear', '==', leagueData.draftYear)
       );
       
-      // Fetch both teams and players in parallel
-      const [teamsSnapshot, playersSnapshot] = await Promise.all([
+      // Get draft settings
+      const draftSettingsQuery = query(
+        collection(db, 'draftSettings'),
+        where('sportType', '==', leagueData.sportType),
+        where('draftYear', '==', leagueData.draftYear)
+      );
+      
+      // Fetch all data in parallel
+      const [teamsSnapshot, playersSnapshot, draftSettingsSnapshot] = await Promise.all([
         getDocs(teamsQuery),
-        getDocs(playersQuery)
+        getDocs(playersQuery),
+        getDocs(draftSettingsQuery)
       ]);
       
       // Process teams data
@@ -154,6 +163,14 @@ export default function PredictionsPage() {
           confidence: null
         })
       );
+      
+      // Check if draft is live
+      let isLive = false;
+      if (!draftSettingsSnapshot.empty) {
+        const settingsData = draftSettingsSnapshot.docs[0].data();
+        isLive = settingsData.isLive === true;
+      }
+      setDraftIsLive(isLive);
       
       // Try to load existing predictions
       try {
@@ -199,7 +216,7 @@ export default function PredictionsPage() {
   };
   
   const handlePlayerSelect = (playerId: string) => {
-    if (!editingPosition) return;
+    if (!editingPosition || draftIsLive) return;
     
     // Check if player is already selected
     const existingPosition = predictions.find(p => p.playerId === playerId)?.position;
@@ -233,6 +250,8 @@ export default function PredictionsPage() {
   };
   
   const handleConfidenceSelect = (position: number, confidence: number) => {
+    if (draftIsLive) return;
+    
     // Check if confidence is already used
     const existingPosition = predictions.find(p => p.confidence === confidence)?.position;
     if (existingPosition && existingPosition !== position) {
@@ -264,6 +283,8 @@ export default function PredictionsPage() {
   };
   
   const handleClearPick = (position: number) => {
+    if (draftIsLive) return;
+    
     setPredictions(prev => 
       prev.map(p => 
         p.position === position 
@@ -275,6 +296,12 @@ export default function PredictionsPage() {
   
   const handleSavePredictions = async () => {
     if (!user || !league) return;
+    
+    // Prevent saving if draft is live
+    if (draftIsLive) {
+      setError('Predictions are locked. The draft is now live!');
+      return;
+    }
     
     // Validate predictions
     const missingPicks = predictions.some(p => p.playerId === null);
@@ -386,6 +413,15 @@ export default function PredictionsPage() {
         </p>
       </div>
       
+      {draftIsLive && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+          <h2 className="text-lg font-semibold text-red-800 mb-2">Predictions Locked</h2>
+          <p className="text-red-700">
+            The draft is now live! Predictions are locked and can no longer be modified.
+          </p>
+        </div>
+      )}
+      
       {error && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
           <p className="text-red-700">{error}</p>
@@ -457,8 +493,11 @@ export default function PredictionsPage() {
                       </div>
                     ) : (
                       <button
-                        onClick={() => setEditingPosition(prediction.position)}
-                        className="bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-2 md:py-2 md:px-3 rounded text-xs md:text-sm"
+                        onClick={() => !draftIsLive && setEditingPosition(prediction.position)}
+                        className={`bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-2 md:py-2 md:px-3 rounded text-xs md:text-sm ${
+                          draftIsLive ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                        disabled={draftIsLive}
                       >
                         Select Player
                       </button>
@@ -468,8 +507,11 @@ export default function PredictionsPage() {
                     {player ? (
                       <div className="relative">
                         <button
-                          onClick={() => setShowConfidenceSelector(prediction.position)}
-                          className="flex items-center justify-between w-full border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs md:text-sm"
+                          onClick={() => !draftIsLive && setShowConfidenceSelector(prediction.position)}
+                          className={`flex items-center justify-between w-full border border-gray-300 rounded-md px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs md:text-sm ${
+                            draftIsLive ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                          disabled={draftIsLive}
                         >
                           <span className="font-medium">
                             {prediction.confidence || 'Points'}
@@ -486,7 +528,7 @@ export default function PredictionsPage() {
                         </button>
                         
                         {/* Confidence selector popup */}
-                        {showConfidenceSelector === prediction.position && (
+                        {showConfidenceSelector === prediction.position && !draftIsLive && (
                           <div 
                             className="confidence-selector absolute z-10 mt-1 w-40 bg-white shadow-lg max-h-60 rounded-md border border-gray-200 overflow-auto"
                             style={{ left: '0', top: '100%' }}
@@ -518,7 +560,7 @@ export default function PredictionsPage() {
                     )}
                   </td>
                   <td className="px-1 py-3 whitespace-nowrap text-center text-xs md:text-sm font-medium md:px-2">
-                    {player && (
+                    {player && !draftIsLive && (
                       <button
                         onClick={() => handleClearPick(prediction.position)}
                         className="text-gray-400 hover:text-red-600 group relative"
@@ -555,17 +597,17 @@ export default function PredictionsPage() {
       <div className="flex justify-end">
         <button
           onClick={handleSavePredictions}
-          disabled={saving}
+          disabled={saving || draftIsLive}
           className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg ${
-            saving ? 'opacity-50 cursor-not-allowed' : ''
+            saving || draftIsLive ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
-          {saving ? 'Saving...' : 'Save Predictions'}
+          {saving ? 'Saving...' : draftIsLive ? 'Predictions Locked' : 'Save Predictions'}
         </button>
       </div>
       
       {/* Player Selection Modal */}
-      {editingPosition && (
+      {editingPosition && !draftIsLive && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg p-4 md:p-6 w-full max-w-3xl">
             <div className="flex justify-between items-center mb-4">

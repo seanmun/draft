@@ -174,3 +174,80 @@ export const importPlayersFromCSV = async (
   }
 };
 
+// Get draft settings
+export const getDraftSettings = async (sportType: SportType, draftYear: number) => {
+  try {
+    const q = query(
+      collection(db, 'draftSettings'),
+      where('sportType', '==', sportType),
+      where('draftYear', '==', draftYear)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      // Create default settings if none exist
+      const defaultSettings = {
+        sportType,
+        draftYear,
+        isLive: false,
+        lastUpdatedBy: ADMIN_USER_ID,
+        lastUpdatedAt: serverTimestamp()
+      };
+      
+      const docRef = await addDoc(collection(db, 'draftSettings'), defaultSettings);
+      return { id: docRef.id, ...defaultSettings, isLive: false };
+    }
+    
+    // Return existing settings
+    const settingsDoc = snapshot.docs[0];
+    return { id: settingsDoc.id, ...settingsDoc.data() };
+  } catch (error) {
+    console.error('Error getting draft settings:', error);
+    throw error;
+  }
+};
+
+// Update draft live status
+export const updateDraftLiveStatus = async (
+  sportType: SportType, 
+  draftYear: number, 
+  isLive: boolean,
+  userId: string
+) => {
+  try {
+    const q = query(
+      collection(db, 'draftSettings'),
+      where('sportType', '==', sportType),
+      where('draftYear', '==', draftYear)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    if (snapshot.empty) {
+      // Create settings if none exist
+      const settings = {
+        sportType,
+        draftYear,
+        isLive,
+        lastUpdatedBy: userId,
+        lastUpdatedAt: serverTimestamp()
+      };
+      
+      await addDoc(collection(db, 'draftSettings'), settings);
+    } else {
+      // Update existing settings
+      const settingsDoc = snapshot.docs[0];
+      await updateDoc(doc(db, 'draftSettings', settingsDoc.id), {
+        isLive,
+        lastUpdatedBy: userId,
+        lastUpdatedAt: serverTimestamp()
+      });
+    }
+    
+    return { success: true, isLive };
+  } catch (error) {
+    console.error('Error updating draft live status:', error);
+    throw error;
+  }
+};
