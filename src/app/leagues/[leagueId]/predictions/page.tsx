@@ -394,6 +394,12 @@ export default function PredictionsPage() {
     }
   };
 
+  // Helper function to format team needs
+  const formatTeamNeeds = (needs?: string[]) => {
+    if (!needs || needs.length === 0) return null;
+    return needs.join(', ');
+  };
+
   // Close confidence selector when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -457,6 +463,14 @@ export default function PredictionsPage() {
         </p>
         <p className="text-blue-700">
           You can save your progress at any time and come back later to complete your predictions.
+        </p>
+      </div>
+      
+      <div className="bg-gray-50 border-l-4 border-gray-300 p-4 mb-6">
+        <h2 className="text-lg font-semibold text-gray-700 mb-2">Team Needs</h2>
+        <p className="text-gray-600">
+          Each team has specific positional needs that may influence their draft picks. 
+          Team needs are displayed below each team name to help you make more informed predictions.
         </p>
       </div>
       
@@ -541,12 +555,18 @@ export default function PredictionsPage() {
                   </td>
                   <td className="px-2 py-3 whitespace-nowrap text-xs md:text-sm text-gray-900 md:px-3">
                     {team ? (
-                      <div className="flex items-center">
-                        {team.logoUrl && (
-                          <img src={team.logoUrl} alt={team.name} className="h-5 w-5 mr-2" />
+                      <div>
+                        <div className="flex items-center">
+                          {team.logoUrl && (
+                            <img src={team.logoUrl} alt={team.name} className="h-5 w-5 mr-2" />
+                          )}
+                          <span>{team.name}</span>
+                        </div>
+                        {team.needs && team.needs.length > 0 && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            <span className="font-medium">Needs:</span> {formatTeamNeeds(team.needs)}
+                          </div>
                         )}
-                        {/* Only show team name on desktop */}
-                        <span className="hidden md:inline">{team.name}</span>
                       </div>
                     ) : (
                       `Pick ${prediction.position}`
@@ -724,6 +744,36 @@ export default function PredictionsPage() {
               </button>
             </div>
             
+            {/* Team needs for the current position */}
+            {(() => {
+              const team = teams.find(t => t.pick === editingPosition);
+              if (team && team.needs && team.needs.length > 0) {
+                return (
+                  <div className="bg-blue-50 p-3 rounded-md mb-4">
+                    <div className="flex items-center mb-1">
+                      {team.logoUrl && (
+                        <img src={team.logoUrl} alt={team.name} className="h-5 w-5 mr-2" />
+                      )}
+                      <span className="font-medium">{team.name} Team Needs:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {team.needs.map(need => (
+                        <span 
+                          key={need} 
+                          className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full"
+                          onClick={() => setPositionFilter(need)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {need}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
+            
             {/* Search and filtering controls */}
             <div className="mb-4 flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-2">
               <div className="flex-1">
@@ -777,12 +827,16 @@ export default function PredictionsPage() {
                   ) : (
                     filteredPlayers.map((player) => {
                       const isSelected = predictions.some(p => p.playerId === player.id);
+                      // Highlight players matching team needs
+                      const team = teams.find(t => t.pick === editingPosition);
+                      const matchesTeamNeed = team?.needs?.includes(player.position);
+                      
                       return (
                         <tr 
                           key={player.id}
                           onClick={() => handlePlayerSelect(player.id)}
-                          className={`cursor-pointer hover:bg-blue-50 ${
-                            isSelected ? 'bg-blue-50' : ''
+                          className={`cursor-pointer ${
+                            isSelected ? 'bg-blue-50' : (matchesTeamNeed ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-blue-50')
                           }`}
                         >
                           <td className="px-4 py-2 md:px-6 md:py-3 whitespace-nowrap text-xs md:text-sm font-medium text-gray-900">
@@ -790,6 +844,11 @@ export default function PredictionsPage() {
                             {isSelected && (
                               <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                                 Selected
+                              </span>
+                            )}
+                            {matchesTeamNeed && !isSelected && (
+                              <span className="ml-2 text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                                Team Need
                               </span>
                             )}
                           </td>
