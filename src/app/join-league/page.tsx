@@ -1,4 +1,5 @@
 'use client';
+// this file is src/app/join-leage/page.tsx
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -24,9 +25,13 @@ export default function JoinLeaguePage() {
   
   useEffect(() => {
     if (!authLoading && !user) {
-      // Save the current URL to session storage so we can redirect back after login
+      // Just store the current URL directly - we'll come back here after login
       if (leagueId && inviteCode) {
-        sessionStorage.setItem('pendingJoin', window.location.href);
+        try {
+          sessionStorage.setItem('pendingJoin', window.location.href);
+        } catch {
+          console.warn('SessionStorage not available');
+        }
       }
       router.push('/login');
       return;
@@ -77,10 +82,19 @@ export default function JoinLeaguePage() {
       }
       
       setLeague(leagueData);
+      
+      // Check if this was a redirect from profile completion
+      // This check is simpler - just looking for the referer
+      const fromProfile = document.referrer.includes('/profile');
+      if (fromProfile) {
+        // If coming from profile completion, automatically join
+        handleJoinLeague();
+      } else {
+        setLoading(false);
+      }
     } catch (error) {
       console.error('Error fetching league:', error);
       setError('Failed to load league details. Please try again later.');
-    } finally {
       setLoading(false);
     }
   };

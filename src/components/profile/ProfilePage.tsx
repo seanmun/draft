@@ -1,4 +1,6 @@
 'use client';
+// src/components/profile/ProfilePage.tsx
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
@@ -136,9 +138,36 @@ export default function ProfilePage() {
     }
   };
 
-  const handleContinue = () => {
-    router.push('/leagues');
-  };
+// Inside ProfilePage.tsx
+// Inside the handleContinue function in ProfilePage
+const handleContinue = () => {
+  // Check for a pending join URL - try localStorage first (new method)
+  try {
+    const pendingJoinUrl = window.localStorage.getItem('pendingJoinUrl');
+    if (pendingJoinUrl) {
+      window.localStorage.removeItem('pendingJoinUrl');
+      router.push(pendingJoinUrl);
+      return;
+    }
+  } catch {
+    console.warn('LocalStorage not available');
+  }
+  
+  // Then try sessionStorage as fallback (old method)
+  try {
+    const pendingJoin = sessionStorage.getItem('pendingJoin');
+    if (pendingJoin) {
+      sessionStorage.removeItem('pendingJoin');
+      router.push(pendingJoin);
+      return;
+    }
+  } catch {
+    console.warn('SessionStorage not available');
+  }
+  
+  // Default behavior - go to leagues
+  router.push('/leagues');
+};
 
   // Get user initials for initial-based avatar
   const getUserInitials = () => {

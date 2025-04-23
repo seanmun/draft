@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { FirebaseError } from 'firebase/app';
 import { doc, getDoc } from 'firebase/firestore';
@@ -11,11 +11,21 @@ export default function EmailSignInHandler() {
   const [status, setStatus] = useState('verifying');
   const [error, setError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get the redirect URL from query params
+  const redirectUrl = searchParams?.get('redirect');
 
   useEffect(() => {
     const completeSignIn = async () => {
       if (isSignInWithEmailLink(auth, window.location.href)) {
-        let email = window.localStorage.getItem('emailForSignIn');
+        let email;
+        
+        try {
+          email = window.localStorage.getItem('emailForSignIn');
+        } catch {
+          console.warn('LocalStorage not available');
+        }
         
         // If missing email, prompt user for it
         if (!email) {
@@ -40,10 +50,29 @@ export default function EmailSignInHandler() {
           const result = await signInWithEmailLink(auth, email, window.location.href);
           
           // Clear email from storage
-          window.localStorage.removeItem('emailForSignIn');
+          try {
+            window.localStorage.removeItem('emailForSignIn');
+          } catch {
+            console.warn('LocalStorage not available');
+          }
+          
+          // Check if there's a redirectUrl in query params
+          let joinUrl = redirectUrl ? decodeURIComponent(redirectUrl) : null;
+          
+          // If no redirectUrl in params, check localStorage as fallback
+          if (!joinUrl) {
+            try {
+              joinUrl = window.localStorage.getItem('pendingJoinUrl');
+              if (joinUrl) {
+                window.localStorage.removeItem('pendingJoinUrl');
+              }
+            } catch {
+              console.warn('LocalStorage not available');
+            }
+          }
           
           // Check if user has a completed profile
-          await checkUserProfile(result.user.uid);
+          await checkUserProfile(result.user.uid, joinUrl);
           
         } catch (error: unknown) {
           console.error('Error completing sign in:', error);
@@ -62,31 +91,36 @@ export default function EmailSignInHandler() {
     };
 
     completeSignIn();
-  }, [router]);
+  }, [router, redirectUrl]);
 
   // Check if user has completed their profile
-  const checkUserProfile = async (userId: string) => {
+  const checkUserProfile = async (userId: string, joinUrl: string | null) => {
     try {
       const userDoc = await getDoc(doc(db, 'users', userId));
-      
-      // Check if there's a pending join link
-      const pendingJoin = sessionStorage.getItem('pendingJoin');
       
       if (userDoc.exists()) {
         const userData = userDoc.data();
         
-        // If profile is incomplete or doesn't exist, redirect to profile
+        // If profile is incomplete, redirect to profile
         if (!userData.profileCompleted) {
+          // Store the join URL in localStorage so it persists through profile completion
+          if (joinUrl) {
+            try {
+              window.localStorage.setItem('pendingJoinUrl', joinUrl);
+            } catch {
+              console.warn('LocalStorage not available');
+            }
+          }
+          
           setStatus('success');
           setTimeout(() => {
             router.push('/profile');
           }, 1000);
-        } else if (pendingJoin) {
-          // If there's a pending join, redirect there
-          sessionStorage.removeItem('pendingJoin');
+        } else if (joinUrl) {
+          // If profile is complete and we have a join URL, redirect there
           setStatus('success');
           setTimeout(() => {
-            router.push(pendingJoin);
+            router.push(joinUrl);
           }, 1000);
         } else {
           // Otherwise, go to leagues
@@ -97,6 +131,15 @@ export default function EmailSignInHandler() {
         }
       } else {
         // New user, no profile yet
+        // Store the join URL in localStorage
+        if (joinUrl) {
+          try {
+            window.localStorage.setItem('pendingJoinUrl', joinUrl);
+          } catch {
+            console.warn('LocalStorage not available');
+          }
+        }
+        
         setStatus('success');
         setTimeout(() => {
           router.push('/profile');

@@ -1,4 +1,5 @@
 'use client';
+// this file is src/app/leages/[leagues]/page.tsx
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { doc, getDoc, collection, query, where, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';

@@ -1,3 +1,4 @@
+// this file is src/components/auth/LoginButton.tsx
 import { useState } from 'react';
 import { 
   signInWithPopup, 
@@ -32,16 +33,33 @@ export default function LoginButton() {
   };
 
 // Inside the handlePasswordlessEmailLogin function in LoginButton.js
+// Inside the handlePasswordlessEmailLogin function in LoginButton.tsx
 const handlePasswordlessEmailLogin = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
   try {
     setLoading(true);
     
-    // Updated actionCodeSettings according to the documentation
+    // Get any pending join URL from sessionStorage
+    let continueUrl = window.location.origin + '/login/email-handler';
+    let pendingJoinUrl = '';
+    
+    try {
+      const pendingJoin = sessionStorage.getItem('pendingJoin');
+      if (pendingJoin) {
+        pendingJoinUrl = pendingJoin;
+        
+        // Add the join info to the continue URL
+        const joinParams = new URLSearchParams();
+        joinParams.set('redirect', encodeURIComponent(pendingJoin));
+        continueUrl += '?' + joinParams.toString();
+      }
+    } catch {
+      console.warn('SessionStorage not available');
+    }
+    
+    // Updated actionCodeSettings to include the join info
     const actionCodeSettings = {
-      // URL you want to redirect back to after sign-in
-      url: window.location.origin + '/login/email-handler',
-      // This must be true for email link sign-in
+      url: continueUrl,
       handleCodeInApp: true
     };
     
@@ -49,6 +67,15 @@ const handlePasswordlessEmailLogin = async (e: React.FormEvent<HTMLFormElement>)
     
     // Save the email locally to complete sign-in on the same device
     window.localStorage.setItem('emailForSignIn', email);
+    
+    // Also save the pendingJoinUrl if it exists
+    if (pendingJoinUrl) {
+      try {
+        window.localStorage.setItem('pendingJoinUrl', pendingJoinUrl);
+      } catch {
+        console.warn('LocalStorage not available');
+      }
+    }
     
     setEmailSent(true);
     setError('');

@@ -1,6 +1,6 @@
 'use client';
-
-import { useRouter } from 'next/navigation';
+// this file is src/app/login/page.tsx
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import LoginButton from '../../components/auth/LoginButton';
@@ -10,6 +10,27 @@ import { db } from '../../lib/firebase';
 export default function Login() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get returnUrl and autoJoin from URL if present
+  const returnUrl = searchParams?.get('returnUrl');
+  const autoJoin = searchParams?.get('autoJoin') === 'true';
+
+  // Store these values in sessionStorage as a backup
+  useEffect(() => {
+    if (returnUrl) {
+      try {
+        // Store the returnUrl and autoJoin flag in sessionStorage
+        const pendingJoinData = {
+          url: returnUrl,
+          autoJoin: autoJoin
+        };
+        sessionStorage.setItem('pendingJoin', JSON.stringify(pendingJoinData));
+      } catch {
+        console.warn('SessionStorage not available');
+      }
+    }
+  }, [returnUrl, autoJoin]);
 
   // Redirects after login
   useEffect(() => {
@@ -20,37 +41,74 @@ export default function Login() {
   }, [user, loading, router]);
 
   // Check if user has completed their profile
-  const checkUserProfile = async (userId: string) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
+const checkUserProfile = async (userId: string) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    
+    // Check if there's a pending join link from URL params or sessionStorage
+    let pendingJoin;
+    let pendingJoinUrl = returnUrl;
+    let shouldAutoJoin = autoJoin;
+    
+    if (!pendingJoinUrl) {
+      // Try to get from sessionStorage if not in URL
+      try {
+        const pendingJoinStr = sessionStorage.getItem('pendingJoin');
+        if (pendingJoinStr) {
+          try {
+            // Try parsing as JSON (new format)
+            pendingJoin = JSON.parse(pendingJoinStr);
+            pendingJoinUrl = pendingJoin.url;
+            shouldAutoJoin = pendingJoin.autoJoin === true;
+          } catch {
+            // If it's not JSON, assume it's just the URL (old format)
+            pendingJoinUrl = pendingJoinStr;
+            shouldAutoJoin = false;
+          }
+        }
+      } catch {
+        console.warn('SessionStorage not available');
+      }
+    }
+    
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
       
-      // Check if there's a pending join link
-      const pendingJoin = sessionStorage.getItem('pendingJoin');
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        
-        // If profile is incomplete or doesn't exist, redirect to profile
-        if (!userData.profileCompleted) {
-          router.push('/profile');
-        } else if (pendingJoin) {
-          // If there's a pending join, redirect there
+      // If profile is incomplete or doesn't exist, redirect to profile
+      // but DON'T remove pendingJoin from sessionStorage
+      if (!userData.profileCompleted) {
+        router.push('/profile');
+      } else if (pendingJoinUrl) {
+        // If there's a pending join and profile is complete, redirect there
+        try {
           sessionStorage.removeItem('pendingJoin');
-          router.push(pendingJoin);
+        } catch {
+          console.warn('SessionStorage not available');
+        }
+        
+        // Add autoJoin parameter if needed
+        if (shouldAutoJoin) {
+          const url = new URL(pendingJoinUrl);
+          url.searchParams.set('autoJoin', 'true');
+          router.push(url.toString());
         } else {
-          // Otherwise, go to leagues
-          router.push('/leagues');
+          router.push(pendingJoinUrl);
         }
       } else {
-        // New user, no profile yet
-        router.push('/profile');
+        // Otherwise, go to leagues
+        router.push('/leagues');
       }
-    } catch (error) {
-      console.error('Error checking user profile:', error);
-      // On error, just redirect to leagues as fallback
-      router.push('/leagues');
+    } else {
+      // New user, no profile yet - redirect to profile
+      // but DON'T remove pendingJoin from sessionStorage
+      router.push('/profile');
     }
-  };
+  } catch (error) {
+    console.error('Error checking user profile:', error);
+    // On error, just redirect to leagues as fallback
+    router.push('/leagues');
+  }
+};
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
