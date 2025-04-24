@@ -6,6 +6,9 @@ import { db } from '../../../../lib/firebase';
 import { useAuth } from '../../../../hooks/useAuth';
 import Link from 'next/link';
 import type { Team, League, Player, Prediction } from '../../../../lib/types';
+// Add to your imports at the top of the file
+import { getMockDraftsBySportAndYear } from '../../../../lib/mockDrafts';
+import type { MockDraft } from '../../../../lib/types';
 
 export default function PredictionsPage() {
   const params = useParams();
@@ -26,6 +29,8 @@ export default function PredictionsPage() {
   const [success, setSuccess] = useState('');
   const [draftIsLive, setDraftIsLive] = useState<boolean>(false);
   const [isPredictionComplete, setIsPredictionComplete] = useState<boolean>(false);
+  const [mockDrafts, setMockDrafts] = useState<MockDraft[]>([]);
+  const [loadingMockDrafts, setLoadingMockDrafts] = useState(false);
   
   // For the UI state
   const [availableConfidencePoints, setAvailableConfidencePoints] = useState<number[]>([]);
@@ -225,6 +230,21 @@ export default function PredictionsPage() {
         console.error('Error loading predictions:', error);
         setPredictions(initialPredictions);
       }
+      
+      // Load mock drafts for this sport and year
+      setLoadingMockDrafts(true);
+      try {
+        const mockDraftsData = await getMockDraftsBySportAndYear(
+          leagueData.sportType,
+          leagueData.draftYear
+        );
+        setMockDrafts(mockDraftsData);
+      } catch (error) {
+        console.error('Error loading mock drafts:', error);
+      } finally {
+        setLoadingMockDrafts(false);
+      }
+      
     } catch (error) {
       console.error('Error fetching league or players:', error);
       setError('Failed to load league or player data');
@@ -232,7 +252,6 @@ export default function PredictionsPage() {
       setLoading(false);
     }
   };
-  
   const getPlayerById = (playerId: string | null) => {
     if (!playerId) return null;
     return players.find(p => p.id === playerId) || null;
@@ -317,6 +336,37 @@ export default function PredictionsPage() {
       )
     );
   };
+
+  // Add this function to your component
+const handleApplyMockDraft = (mockDraft: MockDraft) => {
+  if (draftIsLive) return;
+  
+  // Confirm with the user
+  if (!confirm(`This will replace your current player selections with ${mockDraft.sportscaster}'s mock draft (${mockDraft.version}). Continue?`)) {
+    return;
+  }
+  
+  // Create a copy of the current predictions to modify
+  const updatedPredictions = [...predictions];
+  
+  // Apply the mock draft picks
+  mockDraft.picks.forEach(pick => {
+    const predIndex = updatedPredictions.findIndex(p => p.position === pick.position);
+    if (predIndex !== -1) {
+      // Update the player but keep existing confidence if any
+      updatedPredictions[predIndex] = {
+        ...updatedPredictions[predIndex],
+        playerId: pick.playerId
+      };
+    }
+  });
+  
+  // Update predictions state
+  setPredictions(updatedPredictions);
+  
+  // Show success message
+  setSuccess(`Successfully applied ${mockDraft.sportscaster}'s mock draft (${mockDraft.version})`);
+};
   
   const handleApplyChalk = () => {
     if (draftIsLive || !league) return;
@@ -495,27 +545,56 @@ export default function PredictionsPage() {
         </div>
       )}
       
-      {/* Quick Tools */}
-      {!draftIsLive && (
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <h2 className="font-semibold text-gray-700 mb-3">Quick Tools</h2>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={handleApplyChalk}
-              className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md text-sm"
-              title="Assign confidence points based on draft order (highest to lowest)"
-            >
-              Apply Chalk Points
-            </button>
-            <div className="text-sm text-gray-500 ml-2 flex items-center">
-              <svg className="h-5 w-5 text-gray-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              Assigns points in order: Pick 1 = {league.settings.totalPicks} points, Pick 2 = {league.settings.totalPicks - 1} points, etc.
-            </div>
-          </div>
+{/* Quick Tools */}
+{!draftIsLive && (
+  <div className="bg-white rounded-lg shadow p-4 mb-6">
+    <h2 className="font-semibold text-gray-700 mb-3">Quick Tools</h2>
+    <div className="flex flex-wrap gap-2 mb-4">
+      <button
+        onClick={handleApplyChalk}
+        className="bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-md text-sm"
+        title="Assign confidence points based on draft order (highest to lowest)"
+      >
+        Apply Chalk Points
+      </button>
+      <div className="text-sm text-gray-500 ml-2 flex items-center">
+        <svg className="h-5 w-5 text-gray-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Assigns points in order: Pick 1 = {league.settings.totalPicks} points, Pick 2 = {league.settings.totalPicks - 1} points, etc.
+      </div>
+    </div>
+    
+    {/* Mock Draft Tools */}
+    {mockDrafts.length > 0 && (
+      <div className="border-t pt-3">
+        <h3 className="font-medium text-gray-700 mb-2">Apply Mock Draft</h3>
+        <div className="flex flex-wrap gap-2">
+          {loadingMockDrafts ? (
+            <div className="text-sm text-gray-500">Loading mock drafts...</div>
+          ) : (
+            mockDrafts.map(mockDraft => (
+              <button
+                key={mockDraft.id}
+                onClick={() => handleApplyMockDraft(mockDraft)}
+                className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-md text-sm"
+                title={`Apply ${mockDraft.sportscaster}'s mock draft predictions`}
+              >
+                {mockDraft.sportscaster} {mockDraft.version}
+              </button>
+            ))
+          )}
         </div>
-      )}
+        <div className="text-sm text-gray-500 mt-2 flex items-center">
+          <svg className="h-5 w-5 text-gray-400 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Select a mock draft to use as a starting point for your predictions. Your current player selections will be replaced.
+        </div>
+      </div>
+    )}
+  </div>
+)}
       
       <div className="bg-white rounded-lg shadow overflow-hidden mb-8">
         <div className="overflow-x-auto">

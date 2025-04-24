@@ -76,3 +76,18 @@ export interface DraftSettings {
   lastUpdatedBy: string;
   lastUpdatedAt: Date;
 }
+
+// In types.ts, add this alongside your other interfaces:
+export interface MockDraft {
+  id: string;
+  sportscaster: string;
+  version: string;
+  sportType: SportType;
+  draftYear: number;
+  createdAt: Date;
+  updatedAt: Date;
+  picks: {
+    position: number;
+    playerId: string;
+  }[];
+}
