@@ -56,7 +56,7 @@ export default function Layout({ children }: LayoutProps) {
                   Leagues
                 </Link>
                 <Link href="/about" className="text-gray-700 hover:text-blue-600 px-3 py-2">
-                  About
+                  How it works
                 </Link>
               </nav>
             </div>
@@ -147,7 +147,7 @@ export default function Layout({ children }: LayoutProps) {
                 className="block text-gray-700 hover:text-blue-600 py-2"
                 onClick={() => setMenuOpen(false)}
               >
-                About
+                How it works
               </Link>
               {user && (
                 <>
