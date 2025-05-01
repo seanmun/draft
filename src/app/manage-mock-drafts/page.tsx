@@ -247,16 +247,21 @@ export default function ManageMockDraftsPage() {
           <div className="bg-gray-50 p-4 rounded-md">
             <h3 className="font-semibold text-gray-800 mb-4">Import Mock Draft</h3>
             
-            {players.length === 0 && !isLoading && (
-              <div className="bg-yellow-50 p-4 rounded-md mb-4">
-                <p className="text-yellow-700">
-                  Warning: No players detected for {sportType} {draftYear}. Your mock draft may not match any players.
-                </p>
-                <Link href="/manage-players" className="text-blue-600 hover:underline mt-2 inline-block">
-                  Go to Player Import
-                </Link>
-              </div>
-            )}
+            {players.length > 0 && (
+                <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                    <h3 className="text-lg font-semibold text-blue-800 mb-2">First 10 Players in Database</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {players.slice(0, 10).map((player, index) => (
+                        <div key={index} className="bg-white p-2 rounded text-sm">
+                        <strong>{player.name}</strong> ({player.position})
+                        </div>
+                    ))}
+                    </div>
+                    <p className="text-blue-700 mt-2">
+                    {players.length > 10 ? `Plus ${players.length - 10} more players...` : ''}
+                    </p>
+                </div>
+                )}
             
             <div className="mb-4">
               <label className="block text-gray-700 mb-2" htmlFor="sportscaster">

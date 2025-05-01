@@ -14,7 +14,7 @@ export default function Home() {
       {/* Add the logo here, above the welcome text */}
       <div className="mb-6">
         <Image 
-          src="/images/ddt_gettleman.png"
+          src="/images/ddt_jd.png"
           alt="Draft Day Trades Logo"
           width={250}
           height={250}

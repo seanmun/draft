@@ -65,7 +65,7 @@ export default function AnnouncementBanner({
           <span className="uppercase tracking-wider">NFL Draft is LIVE!</span>
         </div>
       ) : (
-        <span>Draft predictions lock at 7:55pm EST Thursday April 24th</span>
+        <span>NBA Draft predictions lock at 7:55pm EST Wednesday June 25th</span>
       )}
     </div>
   );
