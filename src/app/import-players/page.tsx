@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Player, SportType } from '../../lib/types';
+import { SportType } from '../../lib/types';
 import Link from 'next/link';
 
 export default function ImportPlayersPage() {
