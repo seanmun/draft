@@ -27,13 +27,24 @@ export default function MockDraftsPage() {
         getMockDraftsBySportAndYear('NBA', 2025)
       ]);
       
+      // Debug: Log the data structure
+      console.log('NFL Drafts:', nflDrafts);
+      console.log('NBA Drafts:', nbaDrafts);
+      
       // Combine and sort by date (newest first)
       const allDrafts = [...nflDrafts, ...nbaDrafts].sort((a, b) => {
-        const getDateFromTimestamp = (timestamp: any): Date => {
+        const getDateFromTimestamp = (timestamp: unknown): Date => {
           if (!timestamp) return new Date(0);
           if (timestamp instanceof Date) return timestamp;
-          if (typeof timestamp === 'object' && 'toDate' in timestamp && typeof timestamp.toDate === 'function') {
-            return timestamp.toDate() as Date;
+          if (typeof timestamp === 'object' && timestamp !== null && 'toDate' in timestamp && typeof (timestamp as { toDate: () => Date }).toDate === 'function') {
+            return (timestamp as { toDate: () => Date }).toDate();
+          }
+          if (typeof timestamp === 'string') {
+            const parsed = new Date(timestamp);
+            return isNaN(parsed.getTime()) ? new Date(0) : parsed;
+          }
+          if (typeof timestamp === 'number') {
+            return new Date(timestamp);
           }
           return new Date(0);
         };
@@ -53,18 +64,29 @@ export default function MockDraftsPage() {
     }
   };
 
-  const formatDate = (date: Date | { toDate: () => Date } | null | undefined): string => {
+  const formatDate = (date: unknown): string => {
     if (!date) return 'N/A';
     
     try {
       // Handle Firebase Timestamp
-      if (typeof date === 'object' && 'toDate' in date && typeof date.toDate === 'function') {
-        return date.toDate().toLocaleDateString();
+      if (typeof date === 'object' && date !== null && 'toDate' in date && typeof (date as { toDate: () => Date }).toDate === 'function') {
+        return (date as { toDate: () => Date }).toDate().toLocaleDateString();
       }
       
       // Handle Date object
       if (date instanceof Date) {
         return date.toLocaleDateString();
+      }
+      
+      // Handle string dates
+      if (typeof date === 'string') {
+        const parsed = new Date(date);
+        return isNaN(parsed.getTime()) ? 'N/A' : parsed.toLocaleDateString();
+      }
+      
+      // Handle timestamp numbers
+      if (typeof date === 'number') {
+        return new Date(date).toLocaleDateString();
       }
       
       return 'N/A';
@@ -223,24 +245,14 @@ export default function MockDraftsPage() {
                       {draft.picks?.length || 0} picks • Updated {formatDate(draft.updatedAt)}
                     </p>
                     
-                    <div className="flex space-x-2">
-                      <TrackableLink
-                        href={`/nfl/2025/mock-drafts/${draft.id}`}
-                        fromPage="/mock-drafts"
-                        linkText={`View ${draft.sportscaster} Mock Draft`}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded"
-                      >
-                        View Mock Draft
-                      </TrackableLink>
-                      <TrackableLink
-                        href={`/leagues/create?mockDraft=${draft.id}`}
-                        fromPage="/mock-drafts"
-                        linkText={`Create League from ${draft.sportscaster} Mock`}
-                        className="flex-1 border border-blue-600 text-blue-600 hover:bg-blue-50 text-center py-2 px-4 rounded"
-                      >
-                        Create League
-                      </TrackableLink>
-                    </div>
+                    <TrackableLink
+                      href={`/nfl/2025/mock-drafts/${draft.id}`}
+                      fromPage="/mock-drafts"
+                      linkText={`View ${draft.sportscaster} Mock Draft`}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      View mock &rarr;
+                    </TrackableLink>
                   </div>
                 ))}
               </div>
@@ -284,24 +296,14 @@ export default function MockDraftsPage() {
                       {draft.picks?.length || 0} picks • Updated {formatDate(draft.updatedAt)}
                     </p>
                     
-                    <div className="flex space-x-2">
-                      <TrackableLink
-                        href={`/nba/2025/mock-drafts/${draft.id}`}
-                        fromPage="/mock-drafts"
-                        linkText={`View ${draft.sportscaster} NBA Mock Draft`}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-2 px-4 rounded"
-                      >
-                        View Mock Draft
-                      </TrackableLink>
-                      <TrackableLink
-                        href={`/leagues/create?mockDraft=${draft.id}`}
-                        fromPage="/mock-drafts"
-                        linkText={`Create NBA League from ${draft.sportscaster} Mock`}
-                        className="flex-1 border border-blue-600 text-blue-600 hover:bg-blue-50 text-center py-2 px-4 rounded"
-                      >
-                        Create League
-                      </TrackableLink>
-                    </div>
+                    <TrackableLink
+                      href={`/nba/2025/mock-drafts/${draft.id}`}
+                      fromPage="/mock-drafts"
+                      linkText={`View ${draft.sportscaster} NBA Mock Draft`}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      View mock &rarr;
+                    </TrackableLink>
                   </div>
                 ))}
               </div>
