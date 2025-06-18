@@ -184,39 +184,3 @@ async function generateLeagueSitemap(baseUrl: string): Promise<SitemapEntry[]> {
     return [];
   }
 }
-
-// src/app/robots.txt/route.ts
-export async function GET() {
-  const baseUrl = 'https://draftdaytrades.com';
-  
-  const robotsTxt = `
-User-agent: *
-Allow: /
-
-# Sitemap
-Sitemap: ${baseUrl}/sitemap.xml
-
-# Disallow admin and private pages
-Disallow: /admin/
-Disallow: /api/
-Disallow: /leagues/*/manage
-Disallow: /profile
-Disallow: /login
-
-# Allow specific sport and year pages
-Allow: /nfl/
-Allow: /nba/
-Allow: /nhl/
-Allow: /mlb/
-Allow: /wnba/
-
-# Crawl delay (optional)
-Crawl-delay: 1
-`.trim();
-
-  return new Response(robotsTxt, {
-    headers: {
-      'Content-Type': 'text/plain',
-    },
-  });
-}
