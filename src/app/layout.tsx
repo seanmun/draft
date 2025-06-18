@@ -1,6 +1,7 @@
-// src/app/layout.tsx
+// src/app/layout.tsx - Updated with analytics
 import './globals.css';
 import Layout from '../components/layout/Layout';
+import { GoogleAnalytics, PerformanceMonitor } from '../app/analytics/PerformanceMonitor';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -45,6 +46,13 @@ export const metadata = {
       { rel: 'manifest', url: '/manifest.json' },
     ],
   },
+  // Add additional SEO verification meta tags
+  verification: {
+    google: 'your-google-search-console-verification-code',
+    // other: {
+    //   'msvalidate.01': 'your-bing-verification-code',
+    // },
+  },
 };
 
 export default function RootLayout({
@@ -54,8 +62,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Analytics - only loads if GA_ID is set */}
+        <GoogleAnalytics />
+      </head>
       <body className={inter.className}>
         <Layout>{children}</Layout>
+        
+        {/* Performance monitoring - tracks Core Web Vitals */}
+        <PerformanceMonitor />
       </body>
     </html>
   );
