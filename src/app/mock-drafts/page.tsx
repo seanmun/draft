@@ -27,10 +27,6 @@ export default function MockDraftsPage() {
         getMockDraftsBySportAndYear('NBA', 2025)
       ]);
       
-      // Debug: Log the data structure
-      console.log('NFL Drafts:', nflDrafts);
-      console.log('NBA Drafts:', nbaDrafts);
-      
       // Combine and sort by date (newest first)
       const allDrafts = [...nflDrafts, ...nbaDrafts].sort((a, b) => {
         const getDateFromTimestamp = (timestamp: unknown): Date => {
