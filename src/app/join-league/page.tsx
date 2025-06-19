@@ -2,7 +2,7 @@
 // this file is src/app/join-leage/page.tsx
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
@@ -47,8 +47,21 @@ export default function JoinLeaguePage() {
   
   const fetchLeague = async () => {
     setLoading(true);
+
+     // ADD THESE DEBUG LINES:
+  console.log('=== DEBUG JOIN LEAGUE ===');
+  console.log('leagueId:', leagueId);
+  console.log('inviteCode:', inviteCode);
+  console.log('user:', user);
+  console.log('Full URL:', window.location.href);
+  console.log('searchParams:', searchParams?.toString());
+
     try {
       const leagueDoc = await getDoc(doc(db, 'leagues', leagueId!));
+
+      // ADD THIS DEBUG LINE:
+    console.log('League doc exists:', leagueDoc.exists());
+    console.log('League doc data:', leagueDoc.exists() ? leagueDoc.data() : 'No data');
       
       if (!leagueDoc.exists()) {
         setError('League not found. The link might be invalid or the league has been deleted.');
@@ -99,30 +112,41 @@ export default function JoinLeaguePage() {
     }
   };
   
-  const handleJoinLeague = async () => {
-    if (!user || !league) return;
+const handleJoinLeague = async () => {
+  if (!user || !league) return;
+  
+  console.log('=== DEBUG HANDLE JOIN ===');
+  console.log('User UID:', user.uid);
+  console.log('League ID:', league.id);
+  console.log('Current members:', league.members);
+  console.log('Is user already member?', league.members.includes(user.uid));
+  
+  setJoining(true);
+  setError('');
+  
+  try {
+    console.log('About to update league with explicit array...');
     
-    setJoining(true);
-    setError('');
+    // Instead of arrayUnion, explicitly create the new members array
+    const newMembers = [...league.members, user.uid];
     
-    try {
-      // Add user to league members
-      await updateDoc(doc(db, 'leagues', league.id), {
-        members: arrayUnion(user.uid)
-      });
-      
-      setSuccess(`You've successfully joined "${league.name}"! Redirecting...`);
-      
-      // Redirect to league page after a short delay
-      setTimeout(() => {
-        router.push(`/leagues/${league.id}`);
-      }, 2000);
-    } catch (error) {
-      console.error('Error joining league:', error);
-      setError('Failed to join league. Please try again later.');
-      setJoining(false);
-    }
-  };
+    await updateDoc(doc(db, 'leagues', league.id), {
+      members: newMembers
+    });
+    
+    console.log('League update successful!');
+    
+    setSuccess(`You've successfully joined "${league.name}"! Redirecting...`);
+    
+    setTimeout(() => {
+      router.push(`/leagues/${league.id}`);
+    }, 2000);
+  } catch (error) {
+    console.error('Error joining league:', error);
+    setError('Failed to join league. Please try again later.');
+    setJoining(false);
+  }
+};
   
   if (authLoading || (loading && user)) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;

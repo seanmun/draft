@@ -52,6 +52,9 @@ export default function LeaguesPage() {
 
   const fetchLeaguesWithRanks = async () => {
     if (!user) return;
+
+    console.log('=== DEBUG LEAGUES PAGE ===');
+  console.log('Searching for leagues where user is member:', user.uid);
     
     try {
       // 1. Fetch leagues the user is in
