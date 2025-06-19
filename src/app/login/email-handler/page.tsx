@@ -1,6 +1,5 @@
 'use client';
 // this file is src/app/login/email-handler/page.tsx
-
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';

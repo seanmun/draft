@@ -404,14 +404,14 @@ export default function MockDraftsPage() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-bold">NFL Mock Drafts 2025</h2>
-              <TrackableLink
+              {/* <TrackableLink
                 href="/nfl/2025/mock-drafts"
                 fromPage="/mock-drafts"
                 linkText="View All NFL Mock Drafts"
                 className="text-blue-600 hover:text-blue-800 font-medium"
               >
                 View All NFL Mock Drafts →
-              </TrackableLink>
+              </TrackableLink> */}
             </div>
             
             {nflDrafts.length === 0 ? (
@@ -473,14 +473,14 @@ export default function MockDraftsPage() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-bold">NBA Mock Drafts 2025</h2>
-              <TrackableLink
+              {/* <TrackableLink
                 href="/nba/2025/mock-drafts"
                 fromPage="/mock-drafts"
                 linkText="View All NBA Mock Drafts"
                 className="text-blue-600 hover:text-blue-800 font-medium"
               >
                 View All NBA Mock Drafts →
-              </TrackableLink>
+              </TrackableLink> */}
             </div>
             
             {nbaDrafts.length === 0 ? (
