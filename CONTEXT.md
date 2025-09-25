@@ -131,8 +131,10 @@ Draft Day Trades is a web application for creating and participating in sports d
 
 ## URL Structure
 - `/mock-drafts` - Main hub with expert rankings
+- `/mock-drafts/[sport]/[year]` - Sport and year specific mock draft listings
 - `/mock-drafts/[sport]/[year]/[expertSlug]` - Individual expert analysis
 - `/leagues/[leagueId]` - League overview and predictions
 - `/leagues/[leagueId]/leaderboard` - Real-time standings
 - `/manage-draft` - Admin oracle interface (admin only)
 - `/manage-mock-drafts` - Admin mock draft import (admin only)
+
