@@ -11,8 +11,8 @@ interface AnnouncementBannerProps {
 }
 
 export default function AnnouncementBanner({ 
-  sportType = 'NFL', 
-  draftYear = 2025 
+  sportType = 'NFL',
+  draftYear = 2026
 }: AnnouncementBannerProps) {
   const [isLive, setIsLive] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
@@ -65,7 +65,7 @@ export default function AnnouncementBanner({
           <span className="uppercase tracking-wider">NFL Draft is LIVE!</span>
         </div>
       ) : (
-        <span>MLB Draft predictions lock at 5:55pm EST Sunday July 13th</span>
+        <span>NFL Draft begins April 23, 2026 — get your predictions in!</span>
       )}
     </div>
   );

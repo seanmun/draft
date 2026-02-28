@@ -48,20 +48,8 @@ export default function JoinLeaguePage() {
   const fetchLeague = async () => {
     setLoading(true);
 
-     // ADD THESE DEBUG LINES:
-  console.log('=== DEBUG JOIN LEAGUE ===');
-  console.log('leagueId:', leagueId);
-  console.log('inviteCode:', inviteCode);
-  console.log('user:', user);
-  console.log('Full URL:', window.location.href);
-  console.log('searchParams:', searchParams?.toString());
-
     try {
       const leagueDoc = await getDoc(doc(db, 'leagues', leagueId!));
-
-      // ADD THIS DEBUG LINE:
-    console.log('League doc exists:', leagueDoc.exists());
-    console.log('League doc data:', leagueDoc.exists() ? leagueDoc.data() : 'No data');
       
       if (!leagueDoc.exists()) {
         setError('League not found. The link might be invalid or the league has been deleted.');
@@ -115,26 +103,16 @@ export default function JoinLeaguePage() {
 const handleJoinLeague = async () => {
   if (!user || !league) return;
   
-  console.log('=== DEBUG HANDLE JOIN ===');
-  console.log('User UID:', user.uid);
-  console.log('League ID:', league.id);
-  console.log('Current members:', league.members);
-  console.log('Is user already member?', league.members.includes(user.uid));
-  
   setJoining(true);
   setError('');
   
   try {
-    console.log('About to update league with explicit array...');
-    
     // Instead of arrayUnion, explicitly create the new members array
     const newMembers = [...league.members, user.uid];
     
     await updateDoc(doc(db, 'leagues', league.id), {
       members: newMembers
     });
-    
-    console.log('League update successful!');
     
     setSuccess(`You've successfully joined "${league.name}"! Redirecting...`);
     

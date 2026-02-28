@@ -8,7 +8,6 @@ import { getMockDraftsBySportAndYear } from '../../lib/mockDrafts';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { MockDraft, ActualPick } from '../../lib/types';
-import Head from 'next/head';
 
 // Extended MockDraft interface with scoring
 interface MockDraftWithScore extends MockDraft {
@@ -44,30 +43,31 @@ export default function MockDraftsPage() {
   const fetchMockDraftsWithScores = async () => {
     try {
       setLoading(true);
-      
-      // Fetch mock drafts for both NFL and NBA
-      const [nflDrafts, nbaDrafts] = await Promise.all([
+
+      // Fetch mock drafts and draft results in parallel (2 queries per sport instead of N+2)
+      const [nflDrafts, nbaDrafts, nflResults, nbaResults] = await Promise.all([
         getMockDraftsBySportAndYear('NFL', 2025),
-        getMockDraftsBySportAndYear('NBA', 2025)
+        getMockDraftsBySportAndYear('NBA', 2025),
+        fetchDraftResults('NFL', 2025),
+        fetchDraftResults('NBA', 2025)
       ]);
-      
+
+      // Build results lookup by sport
+      const resultsMap: Record<string, Record<number, string>> = {
+        NFL: nflResults,
+        NBA: nbaResults
+      };
+
+      // Score all drafts using pure computation (no additional queries)
       const allDrafts = [...nflDrafts, ...nbaDrafts];
-      
-      // For each draft, calculate accuracy if results exist
-      const draftsWithScores = await Promise.all(
-        allDrafts.map(async (draft) => {
-          const accuracy = await calculateMockDraftAccuracy(draft);
-          return {
-            ...draft,
-            accuracy
-          } as MockDraftWithScore;
-        })
-      );
-      
-      // Sort based on current sort preference
+      const draftsWithScores = allDrafts.map((draft) => ({
+        ...draft,
+        accuracy: scoreMockDraft(draft, resultsMap[draft.sportType] || {})
+      })) as MockDraftWithScore[];
+
       const sortedDrafts = sortDrafts(draftsWithScores, sortBy);
       setMockDrafts(sortedDrafts);
-      
+
     } catch (error) {
       console.error('Error fetching mock drafts:', error);
       setError('Failed to load mock drafts. Please try again later.');
@@ -76,79 +76,52 @@ export default function MockDraftsPage() {
     }
   };
 
-  const calculateMockDraftAccuracy = async (mockDraft: MockDraft) => {
-    try {
-      // Get actual draft results for this sport and year
-      const resultsQuery = query(
-        collection(db, 'draftResults'),
-        where('sportType', '==', mockDraft.sportType),
-        where('draftYear', '==', mockDraft.draftYear)
-      );
-      
-      const resultsSnapshot = await getDocs(resultsQuery);
-      
-      if (resultsSnapshot.empty) {
-        // No results available yet
-        return {
-          correctPicks: 0,
-          totalPicks: mockDraft.picks?.length || 0,
-          points: 0,
-          possiblePoints: 0,
-          percentage: 0,
-          hasResults: false
-        };
-      }
-      
-      // Create map of actual results
-      const actualResults: { [position: number]: string } = {};
-      resultsSnapshot.docs.forEach(doc => {
-        const data = doc.data() as ActualPick;
-        actualResults[data.position] = data.playerId;
-      });
-      
-      // Calculate scores using confidence point system
-      let correctPicks = 0;
-      let points = 0;
-      let possiblePoints = 0;
-      const totalPicks = mockDraft.picks?.length || 0;
-      
-      if (mockDraft.picks) {
-        mockDraft.picks.forEach(pick => {
-          // Calculate confidence points (higher picks worth more)
-          const confidence = totalPicks - pick.position + 1;
-          possiblePoints += confidence;
-          
-          // Check if pick is correct
-          const actualPlayerId = actualResults[pick.position];
-          if (actualPlayerId && actualPlayerId === pick.playerId) {
-            correctPicks++;
-            points += confidence;
-          }
-        });
-      }
-      
-      const percentage = possiblePoints > 0 ? (points / possiblePoints) * 100 : 0;
-      
-      return {
-        correctPicks,
-        totalPicks,
-        points,
-        possiblePoints,
-        percentage,
-        hasResults: true
-      };
-      
-    } catch (error) {
-      console.error('Error calculating accuracy for mock draft:', mockDraft.id, error);
-      return {
-        correctPicks: 0,
-        totalPicks: mockDraft.picks?.length || 0,
-        points: 0,
-        possiblePoints: 0,
-        percentage: 0,
-        hasResults: false
-      };
+  // Fetch results once per (sportType, draftYear) — returns a position-to-playerId map
+  const fetchDraftResults = async (sportType: string, draftYear: number): Promise<Record<number, string>> => {
+    const resultsQuery = query(
+      collection(db, 'draftResults'),
+      where('sportType', '==', sportType),
+      where('draftYear', '==', draftYear)
+    );
+    const snapshot = await getDocs(resultsQuery);
+    const results: Record<number, string> = {};
+    snapshot.docs.forEach(doc => {
+      const data = doc.data() as ActualPick;
+      results[data.position] = data.playerId;
+    });
+    return results;
+  };
+
+  // Pure function — no Firestore calls
+  const scoreMockDraft = (mockDraft: MockDraft, actualResults: Record<number, string>) => {
+    const hasResults = Object.keys(actualResults).length > 0;
+    const totalPicks = mockDraft.picks?.length || 0;
+
+    if (!hasResults || !mockDraft.picks) {
+      return { correctPicks: 0, totalPicks, points: 0, possiblePoints: 0, percentage: 0, hasResults };
     }
+
+    let correctPicks = 0;
+    let points = 0;
+    let possiblePoints = 0;
+
+    mockDraft.picks.forEach(pick => {
+      const confidence = totalPicks - pick.position + 1;
+      possiblePoints += confidence;
+      if (actualResults[pick.position] === pick.playerId) {
+        correctPicks++;
+        points += confidence;
+      }
+    });
+
+    return {
+      correctPicks,
+      totalPicks,
+      points,
+      possiblePoints,
+      percentage: possiblePoints > 0 ? (points / possiblePoints) * 100 : 0,
+      hasResults: true
+    };
   };
 
   const sortDrafts = (drafts: MockDraftWithScore[], sortBy: 'date' | 'accuracy') => {
@@ -312,18 +285,6 @@ export default function MockDraftsPage() {
 
   return (
     <>
-      {/* SEO Meta Tags for Client Component */}
-      <Head>
-        <title>2025 Mock Drafts with Expert Accuracy Scores: NFL, NBA Predictions | Draft Day Trades</title>
-        <meta name="description" content="Latest 2025 NFL and NBA mock drafts from top experts with real-time accuracy scores. See which experts predicted the draft best and create your own prediction leagues." />
-        <meta name="keywords" content="mock draft 2025, NFL mock draft accuracy, NBA mock draft scores, expert predictions, draft accuracy tracking, best mock draft experts" />
-        <link rel="canonical" href="https://draftdaytrades.com/mock-drafts" />
-        <meta property="og:title" content="2025 Mock Drafts with Expert Accuracy Scores: NFL, NBA Predictions" />
-        <meta property="og:description" content="Latest 2025 NFL and NBA mock drafts from top experts with real-time accuracy scores. See which experts predicted the draft best and create your own prediction leagues." />
-        <meta property="og:url" content="https://draftdaytrades.com/mock-drafts" />
-        <meta property="og:type" content="article" />
-      </Head>
-
       <ScrollTracker pageName="/mock-drafts" />
       
       <StructuredData type="WebPage" data={mockDraftsSchema} />
@@ -332,7 +293,7 @@ export default function MockDraftsPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold mb-4">2025 Mock Drafts: Expert Predictions & Accuracy Scores</h1>
+          <h1 className="text-4xl font-extrabold mb-4 text-gray-900">2025 Mock Drafts: Expert Predictions & Accuracy Scores</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Compare the latest mock drafts from top experts with real-time accuracy tracking. 
             See which experts predicted the draft best and create your own prediction leagues.
@@ -346,51 +307,51 @@ export default function MockDraftsPage() {
         )}
 
         {/* Enhanced Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-12">
-          <div className="text-center bg-blue-50 p-6 rounded-lg">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
+          <div className="text-center bg-blue-50 p-5 rounded-xl border border-blue-100">
             <div className="text-3xl font-bold text-blue-600">{mockDrafts.length}</div>
-            <div className="text-gray-600">Total Mock Drafts</div>
+            <div className="text-sm text-gray-600">Total Mock Drafts</div>
           </div>
-          <div className="text-center bg-green-50 p-6 rounded-lg">
+          <div className="text-center bg-green-50 p-5 rounded-xl border border-green-100">
             <div className="text-3xl font-bold text-green-600">{completedDrafts.length}</div>
-            <div className="text-gray-600">With Results</div>
+            <div className="text-sm text-gray-600">With Results</div>
           </div>
-          <div className="text-center bg-purple-50 p-6 rounded-lg">
+          <div className="text-center bg-purple-50 p-5 rounded-xl border border-purple-100">
             <div className="text-3xl font-bold text-purple-600">{nflDrafts.length}</div>
-            <div className="text-gray-600">NFL Mock Drafts</div>
+            <div className="text-sm text-gray-600">NFL Mock Drafts</div>
           </div>
-          <div className="text-center bg-orange-50 p-6 rounded-lg">
+          <div className="text-center bg-orange-50 p-5 rounded-xl border border-orange-100">
             <div className="text-3xl font-bold text-orange-600">{nbaDrafts.length}</div>
-            <div className="text-gray-600">NBA Mock Drafts</div>
+            <div className="text-sm text-gray-600">NBA Mock Drafts</div>
           </div>
-          <div className="text-center bg-yellow-50 p-6 rounded-lg">
+          <div className="text-center bg-yellow-50 p-5 rounded-xl border border-yellow-100 col-span-2 md:col-span-1">
             <div className="text-3xl font-bold text-yellow-600">
               {avgAccuracy > 0 ? `${avgAccuracy.toFixed(1)}%` : 'TBD'}
             </div>
-            <div className="text-gray-600">Avg Accuracy</div>
+            <div className="text-sm text-gray-600">Avg Accuracy</div>
           </div>
         </div>
 
         {/* Sort Controls */}
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold">Expert Mock Drafts</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Expert Mock Drafts</h2>
           <div className="flex space-x-2">
             <button
               onClick={() => handleSortChange('accuracy')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 sortBy === 'accuracy'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               Sort by Accuracy
             </button>
             <button
               onClick={() => handleSortChange('date')}
-              className={`px-4 py-2 rounded-md text-sm font-medium ${
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 sortBy === 'date'
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
               Sort by Date
@@ -419,7 +380,7 @@ export default function MockDraftsPage() {
                 <p className="text-gray-600">No NFL mock drafts available yet. Check back soon!</p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Expert Rankings - {nflDrafts.length} Mock Drafts
@@ -488,7 +449,7 @@ export default function MockDraftsPage() {
                 <p className="text-gray-600">No NBA mock drafts available yet. Check back soon!</p>
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow overflow-hidden">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200">
                   <h3 className="text-lg font-semibold text-gray-900">
                     Expert Rankings - {nbaDrafts.length} Mock Drafts
@@ -540,8 +501,8 @@ export default function MockDraftsPage() {
         </div>
 
         {/* How Accuracy Works */}
-        <section className="bg-gray-50 rounded-lg p-8 mt-12">
-          <h2 className="text-2xl font-bold mb-4">How We Score Mock Draft Accuracy</h2>
+        <section className="bg-gray-50 rounded-xl border border-gray-200 p-8 mt-12">
+          <h2 className="text-2xl font-bold mb-4 text-gray-900">How We Score Mock Draft Accuracy</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div>
               <h3 className="text-lg font-semibold mb-2">Confidence Point System</h3>
@@ -561,7 +522,7 @@ export default function MockDraftsPage() {
                 Accuracy scores are calculated in real-time as official draft results are announced. 
                 This gives you the most up-to-date view of which experts are performing best.
               </p>
-              <div className="bg-white p-4 rounded border">
+              <div className="bg-white p-4 rounded-xl border border-gray-200">
                 <div className="font-mono text-sm">
                   Accuracy = (Points Earned / Max Points) × 100
                 </div>
@@ -578,8 +539,8 @@ export default function MockDraftsPage() {
           <h2 className="text-2xl font-bold mb-6 text-center">Frequently Asked Questions</h2>
           <div className="max-w-3xl mx-auto space-y-4">
             {faqs.map((faq, index) => (
-              <details key={index} className="border border-gray-200 rounded-lg">
-                <summary className="p-4 cursor-pointer hover:bg-gray-50 font-medium">
+              <details key={index} className="bg-gray-50 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
+                <summary className="p-4 cursor-pointer font-medium text-gray-900">
                   {faq.question}
                 </summary>
                 <div className="px-4 pb-4 text-gray-600">
@@ -591,17 +552,17 @@ export default function MockDraftsPage() {
         </section>
 
         {/* CTA Section */}
-        <section className="bg-blue-600 text-white rounded-lg p-8 mt-12 text-center">
+        <section className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-8 mt-12 text-center">
           <h2 className="text-2xl font-bold mb-4">Create Your Own Draft Prediction League</h2>
-          <p className="text-xl mb-6 opacity-90">
-            Use any of these expert mock drafts as a starting point for your own prediction contest, 
+          <p className="text-lg mb-6 text-blue-100">
+            Use any of these expert mock drafts as a starting point for your own prediction contest,
             or compete against the experts with your own predictions
           </p>
           <TrackableLink
             href="/leagues/create"
             fromPage="/mock-drafts"
             linkText="Create League from Mock Drafts"
-            className="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-lg inline-block"
+            className="bg-white text-blue-600 hover:bg-blue-50 font-bold py-3 px-8 rounded-lg inline-block shadow-md transition-colors"
           >
             Create Your League
           </TrackableLink>

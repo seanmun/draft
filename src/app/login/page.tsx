@@ -111,9 +111,9 @@ const checkUserProfile = async (userId: string) => {
 };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="bg-white p-8 rounded shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Welcome to Draft Day Trades</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white px-4">
+      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200 w-full max-w-md">
+        <h1 className="text-2xl font-extrabold mb-6 text-center text-gray-900">Welcome to Draft Day Trades</h1>
         <p className="mb-6 text-gray-600 text-center">
           Sign in to create or join a draft prediction league
         </p>

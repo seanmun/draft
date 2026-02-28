@@ -43,8 +43,6 @@ export default function CreateLeagueForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    console.log("Form submitted", formData);
-    
     if (!user) {
       alert('You must be signed in to create a league');
       return;
@@ -53,11 +51,7 @@ export default function CreateLeagueForm() {
     setIsSubmitting(true);
     
     try {
-      console.log("Generating invite code...");
       const inviteCode = generateInviteCode();
-      console.log("Generated invite code:", inviteCode);
-      
-      console.log("Creating document in Firestore...");
       const leagueRef = await addDoc(collection(db, 'leagues'), {
         name: formData.name,
         description: formData.description,
@@ -73,7 +67,6 @@ export default function CreateLeagueForm() {
         createdAt: serverTimestamp(),
       });
       
-      console.log("League created with ID:", leagueRef.id);
       router.push(`/leagues/${leagueRef.id}`);
     } catch (error) {
       console.error('Error creating league:', error);

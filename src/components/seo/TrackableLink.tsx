@@ -11,19 +11,14 @@ interface TrackableLinkProps {
   linkText: string;
 }
 
-// Simple analytics tracking function (you can expand this later)
 const trackInternalLink = (fromPage: string, toPage: string, linkText: string): void => {
-  // For now, just console log - you can add Google Analytics later
-  console.log('Internal link clicked:', { fromPage, toPage, linkText });
-  
-  // If you have Google Analytics setup, uncomment this:
-  // if (typeof window !== 'undefined' && (window as any).gtag) {
-  //   (window as any).gtag('event', 'internal_link_click', {
-  //     event_category: 'SEO',
-  //     event_label: `${fromPage} -> ${toPage}`,
-  //     custom_parameter_linktext: linkText
-  //   });
-  // }
+  if (typeof window !== 'undefined' && (window as unknown as { gtag?: (...args: unknown[]) => void }).gtag) {
+    (window as unknown as { gtag: (...args: unknown[]) => void }).gtag('event', 'internal_link_click', {
+      event_category: 'SEO',
+      event_label: `${fromPage} -> ${toPage}`,
+      custom_parameter_linktext: linkText
+    });
+  }
 };
 
 export function TrackableLink({ 

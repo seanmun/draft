@@ -28,7 +28,6 @@ export const seedPlayers = async (sportType: SportType, draftYear: number) => {
     const snapshot = await getDocs(q);
     
     if (!snapshot.empty) {
-      console.log(`Players already exist for ${sportType} ${draftYear}`);
       return { success: true, message: `Players already exist for ${sportType} ${draftYear}`, count: snapshot.size };
     }
     

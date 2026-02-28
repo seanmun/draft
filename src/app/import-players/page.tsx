@@ -35,15 +35,15 @@ export default function ImportPlayersPage() {
       const lines = text.split('\n');
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       
-      // Find column indices
-      const nameIndex = headers.indexOf('name');
-      const positionIndex = headers.indexOf('position');
+      // Find column indices (support alternate column names)
+      const nameIndex = headers.indexOf('name') !== -1 ? headers.indexOf('name') : headers.indexOf('player');
+      const positionIndex = headers.indexOf('position') !== -1 ? headers.indexOf('position') : headers.indexOf('pos');
       const schoolIndex = headers.indexOf('school');
-      const rankIndex = headers.indexOf('rank'); // Add this line
+      const rankIndex = headers.indexOf('rank') !== -1 ? headers.indexOf('rank') : headers.indexOf('rk');
 
       // Validate headers
       if (nameIndex === -1 || positionIndex === -1) {
-        throw new Error('CSV must include "name" and "position" columns');
+        throw new Error('CSV must include "name"/"player" and "position"/"pos" columns');
       }
       
       // Parse data rows

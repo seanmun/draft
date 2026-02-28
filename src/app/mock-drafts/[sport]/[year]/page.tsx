@@ -10,7 +10,6 @@ import { StructuredData, FAQSchema } from '../../../../components/seo/Structured
 import { TrackableLink } from '../../../../components/seo/TrackableLink';
 import { ScrollTracker } from '../../../analytics/ScrollTracker';
 import Link from 'next/link';
-import Head from 'next/head';
 
 // Extended MockDraft interface with scoring
 interface MockDraftWithScore extends MockDraft {
@@ -310,13 +309,6 @@ export default function SportYearMockDraftsPage() {
 
   return (
     <>
-      <Head>
-        <title>{pageTitle} | Draft Day Trades</title>
-        <meta name="description" content={pageDescription} />
-        <meta name="keywords" content={`${year} ${sport} mock draft, ${sport} mock draft accuracy, ${sport} draft predictions, best ${sport} mock draft experts`} />
-        <link rel="canonical" href={`https://draftdaytrades.com/mock-drafts/${sport.toLowerCase()}/${year}`} />
-      </Head>
-
       <ScrollTracker pageName={`/mock-drafts/${sport.toLowerCase()}/${year}`} />
 
       <StructuredData type="WebPage" data={pageSchema} />

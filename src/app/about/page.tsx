@@ -21,16 +21,16 @@ export default function AboutPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">About Draft Day Trades</h1>
-        <button 
+        <h1 className="text-3xl font-extrabold text-gray-900">About Draft Day Trades</h1>
+        <button
           onClick={() => router.back()}
           className="text-blue-600 hover:underline"
         >
           Back
         </button>
       </div>
-      
-      <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-8">
+
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-5 mb-8 rounded-r-xl">
         <h2 className="text-lg font-semibold text-blue-800 mb-2">What is Draft Day Trades?</h2>
         <p className="text-blue-700">
           Draft Day Trades is a platform for creating and participating in sports draft confidence pools.
@@ -39,8 +39,8 @@ export default function AboutPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md p-8 mb-8">
-        <h2 className="text-2xl font-semibold mb-6 text-center">How It Works</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-900">How It Works</h2>
         
         <div className="space-y-12">
           {/* Step 1: Sign Up */}
@@ -62,7 +62,7 @@ export default function AboutPage() {
                 </div>
               </div>
               
-              <div className="md:w-1/3 bg-gray-100 p-4 rounded-lg flex items-center justify-center">
+              <div className="md:w-1/3 bg-gray-50 p-4 rounded-xl flex items-center justify-center">
                 <div 
                   className="text-center text-gray-500 cursor-pointer transition-transform hover:scale-105" 
                   onClick={() => openImageModal("/images/about1.png")}
@@ -115,7 +115,7 @@ export default function AboutPage() {
                 </div>
               </div>
               
-              <div className="md:w-1/3 bg-gray-100 p-4 rounded-lg flex items-center justify-center">
+              <div className="md:w-1/3 bg-gray-50 p-4 rounded-xl flex items-center justify-center">
                 <div 
                   className="text-center text-gray-500 cursor-pointer transition-transform hover:scale-105" 
                   onClick={() => openImageModal("/images/about2.png")}
@@ -152,7 +152,7 @@ export default function AboutPage() {
                 </div>
               </div>
               
-              <div className="md:w-1/3 bg-gray-100 p-4 rounded-lg flex items-center justify-center">
+              <div className="md:w-1/3 bg-gray-50 p-4 rounded-xl flex items-center justify-center">
                 <div 
                   className="text-center text-gray-500 cursor-pointer transition-transform hover:scale-105" 
                   onClick={() => openImageModal("/images/about3.png")}
@@ -190,7 +190,7 @@ export default function AboutPage() {
                 </div>
               </div>
               
-              <div className="md:w-1/3 bg-gray-100 p-4 rounded-lg flex items-center justify-center">
+              <div className="md:w-1/3 bg-gray-50 p-4 rounded-xl flex items-center justify-center">
                 <div 
                   className="text-center text-gray-500 cursor-pointer transition-transform hover:scale-105" 
                   onClick={() => openImageModal("/images/about4.png")}
@@ -228,7 +228,7 @@ export default function AboutPage() {
                 </div>
               </div>
               
-              <div className="md:w-1/3 bg-gray-100 p-4 rounded-lg flex items-center justify-center">
+              <div className="md:w-1/3 bg-gray-50 p-4 rounded-xl flex items-center justify-center">
                 <div 
                   className="text-center text-gray-500 cursor-pointer transition-transform hover:scale-105" 
                   onClick={() => openImageModal("/images/about5.png")}
@@ -248,8 +248,8 @@ export default function AboutPage() {
         </div>
       </div>
       
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">Scoring System</h2>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+        <h2 className="text-xl font-bold mb-4 text-gray-900">Scoring System</h2>
         
         <p className="text-gray-700 mb-4">
           The scoring system is simple yet strategic:
@@ -267,13 +267,9 @@ export default function AboutPage() {
       </div>
       
       <div className="text-center mb-8">
-        <Link href="/login" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg">
+        <Link href="/login" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg text-lg shadow-md shadow-blue-500/20 transition-all">
           Get Started Now
         </Link>
-      </div>
-      
-      <div className="text-center text-gray-500 text-sm">
-        <p>© 2025 Draft Day Trades. All rights reserved.</p>
       </div>
 
       {/* Image Modal */}

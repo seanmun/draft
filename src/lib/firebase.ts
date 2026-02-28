@@ -21,8 +21,8 @@ let db: Firestore;
 if (typeof window !== 'undefined') {
   // Use the explicit project name as the second parameter
   // Replace "your-project-name" with your actual Firebase project name
-  app = getApps().length === 0 
-    ? initializeApp(firebaseConfig, "your-project-name") 
+  app = getApps().length === 0
+    ? initializeApp(firebaseConfig)
     : getApps()[0];
     
   auth = getAuth(app);

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { db } from '../../lib/firebase';
 import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
-import type { League, Prediction, ActualPick, Player } from '../../lib/types';
+import type { League, Prediction, ActualPick } from '../../lib/types';
 
 // Define interface for league with user rank information
 interface LeagueWithRank extends League {
@@ -21,13 +21,6 @@ interface LeagueWithRank extends League {
 
 export default function LeaguesPage() {
   const { user, loading: authLoading } = useAuth();
-  // Add this line to see your user ID
-  useEffect(() => {
-    if (user) {
-      console.log("Current user ID:", user.uid);
-    }
-  }, [user]);
-  
   const router = useRouter();
   const [leagues, setLeagues] = useState<LeagueWithRank[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,156 +46,116 @@ export default function LeaguesPage() {
   const fetchLeaguesWithRanks = async () => {
     if (!user) return;
 
-    console.log('=== DEBUG LEAGUES PAGE ===');
-  console.log('Searching for leagues where user is member:', user.uid);
-    
     try {
       // 1. Fetch leagues the user is in
       const leaguesQuery = query(
         collection(db, 'leagues'),
         where('members', 'array-contains', user.uid)
       );
-      
+
       const leaguesSnapshot = await getDocs(leaguesQuery);
       const leaguesData = leaguesSnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        userRank: { rank: 0, totalMembers: 0 } // Default rank
+        userRank: { rank: 0, totalMembers: 0 }
       })) as LeagueWithRank[];
-      
-      // 2. For each league, calculate user's rank
-      const leaguesWithRanks = await Promise.all(
-        leaguesData.map(async (league) => {
-          // Fetch predictions for this league
-          const predictionsQuery = query(
-            collection(db, 'predictions'),
-            where('leagueId', '==', league.id)
-          );
-          
-          const predictionsSnapshot = await getDocs(predictionsQuery);
-          const predictions: Prediction[] = [];
-          
-          predictionsSnapshot.forEach(doc => {
-            const data = doc.data();
-            predictions.push({
-              userId: data.userId,
-              leagueId: data.leagueId,
-              picks: data.picks,
-              createdAt: data.createdAt?.toDate(),
-              updatedAt: data.updatedAt?.toDate(),
-            } as Prediction);
-          });
-          
-          // If no predictions found, return league with default rank
-          if (predictions.length === 0) {
-            return {
-              ...league,
-              userRank: {
-                rank: 0, 
-                totalMembers: league.members.length,
-                score: 0,
-                possiblePoints: 0
-              }
-            };
-          }
-          
-          // Fetch players for this league
-          const playersQuery = query(
-            collection(db, 'players'),
-            where('sportType', '==', league.sportType),
-            where('draftYear', '==', league.draftYear)
-          );
-          
-          const playersSnapshot = await getDocs(playersQuery);
-          const players: Player[] = [];
-          
-          playersSnapshot.forEach(doc => {
-            players.push({ id: doc.id, ...doc.data() } as Player);
-          });
-          
-          // Fetch actual draft results
+
+      // 2. Deduplicate: group leagues by (sportType, draftYear) to avoid redundant queries
+      const sportYearKeys = new Set(
+        leaguesData.map(l => `${l.sportType}|${l.draftYear}`)
+      );
+
+      // 3. Fetch draft results once per unique (sportType, draftYear)
+      const resultsCache = new Map<string, ActualPick[]>();
+      await Promise.all(
+        Array.from(sportYearKeys).map(async (key) => {
+          const [sportType, yearStr] = key.split('|');
           const resultsQuery = query(
             collection(db, 'draftResults'),
-            where('sportType', '==', league.sportType),
-            where('draftYear', '==', league.draftYear)
+            where('sportType', '==', sportType),
+            where('draftYear', '==', Number(yearStr))
           );
-          
           const resultsSnapshot = await getDocs(resultsQuery);
-          const results: ActualPick[] = [];
-          
-          resultsSnapshot.forEach(doc => {
+          const results: ActualPick[] = resultsSnapshot.docs.map(doc => {
             const data = doc.data();
-            results.push({ 
+            return {
               position: data.position,
               playerId: data.playerId,
               sportType: data.sportType,
               draftYear: data.draftYear,
               teamId: data.teamId
-            } as ActualPick);
+            } as ActualPick;
           });
-          
-          // Calculate scores for all users
-          const scores = predictions.map(prediction => {
-            let score = 0;
-            let possiblePoints = 0;
-            
-            prediction.picks.forEach(pick => {
-              const actualPick = results.find(result => result.position === pick.position);
-              
-              // Add to possible points
-              possiblePoints += pick.confidence;
-              
-              // If there's a match, add points
-              if (actualPick && actualPick.playerId === pick.playerId) {
-                score += pick.confidence;
-              }
-            });
-            
-            return {
-              userId: prediction.userId,
-              score,
-              possiblePoints
-            };
-          });
-          
-          // Sort scores (highest first)
-          scores.sort((a, b) => b.score - a.score);
-          
-          // Find user's score
-          const userScore = scores.find(score => score.userId === user.uid);
-          
-          // Calculate user rank
-          let userRank = { 
-            rank: 0, 
-            totalMembers: league.members.length,
-            score: 0,
-            possiblePoints: 0
-          };
-          
-          if (userScore) {
-            // Find position (accounting for ties)
-            let rank = 1;
-            for (const score of scores) {
-              if (score.score > userScore.score) {
-                rank++;
-              }
-            }
-            
-            userRank = {
-              rank,
-              totalMembers: league.members.length,
-              score: userScore.score,
-              possiblePoints: userScore.possiblePoints
-            };
-          }
-          
-          return {
-            ...league,
-            userRank
-          };
+          resultsCache.set(key, results);
         })
       );
-      
+
+      // 4. Fetch predictions for all leagues in parallel (one query per league — unavoidable)
+      const predictionsMap = new Map<string, Prediction[]>();
+      await Promise.all(
+        leaguesData.map(async (league) => {
+          const predictionsQuery = query(
+            collection(db, 'predictions'),
+            where('leagueId', '==', league.id)
+          );
+          const predictionsSnapshot = await getDocs(predictionsQuery);
+          const predictions: Prediction[] = predictionsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              userId: data.userId,
+              leagueId: data.leagueId,
+              picks: data.picks,
+              createdAt: data.createdAt?.toDate(),
+              updatedAt: data.updatedAt?.toDate(),
+            } as Prediction;
+          });
+          predictionsMap.set(league.id, predictions);
+        })
+      );
+
+      // 5. Calculate ranks using cached data (pure computation, no more queries)
+      const leaguesWithRanks = leaguesData.map((league) => {
+        const predictions = predictionsMap.get(league.id) || [];
+
+        if (predictions.length === 0) {
+          return {
+            ...league,
+            userRank: { rank: 0, totalMembers: league.members.length, score: 0, possiblePoints: 0 }
+          };
+        }
+
+        const results = resultsCache.get(`${league.sportType}|${league.draftYear}`) || [];
+
+        const scores = predictions.map(prediction => {
+          let score = 0;
+          let possiblePoints = 0;
+
+          prediction.picks.forEach(pick => {
+            const actualPick = results.find(result => result.position === pick.position);
+            possiblePoints += pick.confidence;
+            if (actualPick && actualPick.playerId === pick.playerId) {
+              score += pick.confidence;
+            }
+          });
+
+          return { userId: prediction.userId, score, possiblePoints };
+        });
+
+        scores.sort((a, b) => b.score - a.score);
+        const userScore = scores.find(s => s.userId === user.uid);
+
+        let userRank = { rank: 0, totalMembers: league.members.length, score: 0, possiblePoints: 0 };
+        if (userScore) {
+          let rank = 1;
+          for (const s of scores) {
+            if (s.score > userScore.score) rank++;
+          }
+          userRank = { rank, totalMembers: league.members.length, score: userScore.score, possiblePoints: userScore.possiblePoints };
+        }
+
+        return { ...league, userRank };
+      });
+
       setLeagues(leaguesWithRanks);
     } catch (error) {
       console.error('Error fetching leagues with ranks:', error);
@@ -321,12 +274,12 @@ export default function LeaguesPage() {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">My Leagues</h1>
-          <div className="bg-gray-200 h-10 w-32 rounded animate-pulse"></div>
+          <h1 className="text-2xl font-extrabold text-gray-900">My Leagues</h1>
+          <div className="bg-gray-200 h-10 w-32 rounded-lg animate-pulse"></div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map(i => (
-            <div key={i} className="bg-white rounded-lg shadow p-6">
+            <div key={i} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="h-6 bg-gray-200 rounded w-3/4 mb-2 animate-pulse"></div>
               <div className="h-4 bg-gray-200 rounded w-1/2 mb-4 animate-pulse"></div>
               <div className="h-4 bg-gray-200 rounded w-full mb-2 animate-pulse"></div>
@@ -346,32 +299,32 @@ export default function LeaguesPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">My Leagues</h1>
+        <h1 className="text-2xl font-extrabold text-gray-900">My Leagues</h1>
         <div className="flex space-x-3">
           <button
             onClick={() => setShowJoinModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors"
           >
             Join League
           </button>
-          <Link href="/leagues/create" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+          <Link href="/leagues/create" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">
             Create League
           </Link>
         </div>
       </div>
 
       {leagues.length === 0 ? (
-        <div className="bg-white rounded-lg shadow p-6 text-center">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
           <p className="text-gray-600 mb-6">You are not a member of any leagues yet. Create a new league or join an existing one.</p>
-          
+
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <button
               onClick={() => setShowJoinModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg transition-colors"
             >
               Join a League
             </button>
-            <Link href="/leagues/create" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded">
+            <Link href="/leagues/create" className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors">
               Create a League
             </Link>
           </div>
@@ -380,7 +333,7 @@ export default function LeaguesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {leagues.map(league => (
             <Link href={`/leagues/${league.id}`} key={league.id}>
-              <div className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow cursor-pointer h-full">
+              <div className="card-hover bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-blue-400 transition-colors cursor-pointer h-full">
                 <div className="flex justify-between items-start mb-2">
                   <h2 className="text-xl font-semibold">{league.name}</h2>
                   {renderRankBadge(league.userRank.rank, league.userRank.totalMembers)}
@@ -414,8 +367,8 @@ export default function LeaguesPage() {
       
       {/* Join League Modal */}
       {showJoinModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-lg p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Join a League</h2>
               <button
@@ -461,7 +414,7 @@ export default function LeaguesPage() {
               <button
                 onClick={handleJoinLeague}
                 disabled={joiningLeague || !inviteCode.trim()}
-                className={`bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded ${
+                className={`bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-colors ${
                   (joiningLeague || !inviteCode.trim()) ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >

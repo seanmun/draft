@@ -8,8 +8,6 @@ export default function CreateLeaguePage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   
-  console.log("Create League Page - User:", user, "Loading:", loading);
-
   useEffect(() => {
     if (!loading && !user) {
       router.push('/login');

@@ -65,9 +65,6 @@ export const importMockDraftFromCSV = async (
   players: Player[]
 ) => {
   try {
-    // Log player count for debugging
-    console.log(`Attempting to import with ${players.length} players available`);
-    
     // Normalize player names by removing extra spaces, etc.
     const normalizePlayerName = (name: string) => {
       // Remove all non-alphanumeric characters and convert to lowercase
@@ -92,26 +89,15 @@ export const importMockDraftFromCSV = async (
         playerLastNameMap.get(lastName)?.push(player);
       }
       
-      console.log(`Added player to map: "${normalizedName}" -> ${player.id}`);
     });
     
     // Parse CSV
     const lines = csvData.split('\n');
-    console.log(`CSV has ${lines.length} lines`);
-    
-    // Log the first few lines for debugging
-    console.log("CSV header:", lines[0]);
-    if (lines.length > 1) console.log("First data row:", lines[1]);
-    if (lines.length > 2) console.log("Second data row:", lines[2]);
-    
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
-    console.log("Parsed headers:", headers);
     
     // Find column indices
     const positionIndex = headers.indexOf('position');
     const playerNameIndex = headers.indexOf('player_name');
-    
-    console.log(`Position index: ${positionIndex}, Player name index: ${playerNameIndex}`);
     
     // Validate headers
     if (positionIndex === -1 || playerNameIndex === -1) {
@@ -124,28 +110,18 @@ export const importMockDraftFromCSV = async (
     
     for (let i = 1; i < lines.length; i++) {
       const line = lines[i].trim();
-      if (!line) {
-        console.log(`Line ${i} is empty, skipping`);
-        continue; // Skip empty lines
-      }
+      if (!line) continue; // Skip empty lines
       
       const values = line.split(',').map(v => v.trim());
-      if (values.length < 2) {
-        console.log(`Line ${i} has fewer than 2 values, skipping`);
-        continue; // Skip invalid lines
-      }
+      if (values.length < 2) continue; // Skip invalid lines
       
       const position = parseInt(values[positionIndex]);
       const playerName = values[playerNameIndex];
       
-      if (isNaN(position) || !playerName) {
-        console.log(`Line ${i} has invalid position or empty player name, skipping`);
-        continue; // Skip invalid data
-      }
+      if (isNaN(position) || !playerName) continue; // Skip invalid data
       
       // Find player ID from name
       const normalizedName = normalizePlayerName(playerName);
-      console.log(`Looking for player: "${normalizedName}"`);
       
       // Try exact match first
       let playerId = playerNameToIdMap.get(normalizedName);
@@ -160,7 +136,6 @@ export const importMockDraftFromCSV = async (
           if (candidates && candidates.length === 1) {
             // If there's only one player with this last name, use it
             playerId = candidates[0].id;
-            console.log(`Matched by last name: "${normalizedName}" -> ${candidates[0].name} (${playerId})`);
           } else if (candidates && candidates.length > 1) {
             // Multiple matches - try to find the best one
             let bestMatch = null;
@@ -185,28 +160,24 @@ export const importMockDraftFromCSV = async (
             
             if (bestMatch && bestScore > 0) {
               playerId = bestMatch.id;
-              console.log(`Matched best candidate: "${normalizedName}" -> ${bestMatch.name} (${playerId})`);
             }
           }
         }
       }
       
       if (playerId) {
-        console.log(`Found match for player "${normalizedName}" with ID ${playerId}`);
         picks.push({ position, playerId });
       } else {
-        console.log(`No match found for player "${normalizedName}"`);
         missingPlayers.push({ position, playerName });
       }
     }
     
-    console.log(`Parsed ${picks.length} valid picks and found ${missingPlayers.length} missing players`);
     
     // Handle the case where no picks were matched
     if (picks.length === 0 && missingPlayers.length === 0) {
       throw new Error('No valid picks found in the CSV file. Please check the format.');
     } else if (picks.length === 0 && missingPlayers.length > 0) {
-      console.warn(`No matching players found, but will create mock draft anyway with placeholder IDs`);
+      // No matching players found, but will create mock draft anyway with placeholder IDs
       // Create temporary picks with placeholder IDs for testing
       missingPlayers.forEach(mp => {
         picks.push({

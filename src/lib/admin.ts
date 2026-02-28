@@ -4,7 +4,7 @@ import { db } from './firebase';
 import { Player, SportType, ActualPick } from './types';
 
 // Admin user ID
-export const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || 'gT2kV06j0udPRzdPBd0jt82ufNk2';
+export const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || '';
 
 // Check if a user is an admin
 export const isAdmin = (userId: string): boolean => {
@@ -118,15 +118,15 @@ export const importPlayersFromCSV = async (
     const lines = csvData.split('\n');
     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
     
-    // Find column indices
-    const nameIndex = headers.indexOf('name');
-    const positionIndex = headers.indexOf('position');
+    // Find column indices (support alternate column names)
+    const nameIndex = headers.indexOf('name') !== -1 ? headers.indexOf('name') : headers.indexOf('player');
+    const positionIndex = headers.indexOf('position') !== -1 ? headers.indexOf('position') : headers.indexOf('pos');
     const schoolIndex = headers.indexOf('school');
-    const rankIndex = headers.indexOf('rank');
-    
+    const rankIndex = headers.indexOf('rank') !== -1 ? headers.indexOf('rank') : headers.indexOf('rk');
+
     // Validate headers
     if (nameIndex === -1 || positionIndex === -1) {
-      throw new Error('CSV must include "name" and "position" columns');
+      throw new Error('CSV must include "name"/"player" and "position"/"pos" columns');
     }
     
     // Parse data rows

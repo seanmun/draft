@@ -8,7 +8,6 @@ import { MockDraft, ActualPick, Player } from '../../../../../lib/types';
 import { StructuredData, FAQSchema } from '../../../../../components/seo/StructuredData';
 import { TrackableLink } from '../../../../../components/seo/TrackableLink';
 import Link from 'next/link';
-import Head from 'next/head';
 
 // Extended interfaces for this page
 interface MockDraftWithAccuracy extends MockDraft {
@@ -310,13 +309,6 @@ export default function MockDraftDetailPage() {
 
   return (
     <>
-      <Head>
-        <title>{pageTitle} - Accuracy Analysis | Draft Day Trades</title>
-        <meta name="description" content={pageDescription} />
-        <meta name="keywords" content={`${mockDraft.sportscaster}, ${year} ${sport} mock draft, ${sport} mock draft accuracy, ${mockDraft.sportscaster} predictions, ${sport} draft predictions`} />
-        <link rel="canonical" href={`https://draftdaytrades.com/mock-drafts/${sport.toLowerCase()}/${year}/${expertSlug}`} />
-      </Head>
-
       <StructuredData type="Article" data={articleSchema} />
       <FAQSchema faqs={faqs} />
 
