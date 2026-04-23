@@ -31,6 +31,7 @@ export default function PredictionsPage() {
   const [isPredictionComplete, setIsPredictionComplete] = useState<boolean>(false);
   const [mockDrafts, setMockDrafts] = useState<MockDraft[]>([]);
   const [loadingMockDrafts, setLoadingMockDrafts] = useState(false);
+  const [hasBeenSubmitted, setHasBeenSubmitted] = useState<boolean>(false);
   
   // For the UI state
   const [availableConfidencePoints, setAvailableConfidencePoints] = useState<number[]>([]);
@@ -208,7 +209,9 @@ export default function PredictionsPage() {
         
         if (predictionDoc.exists()) {
           const predictionData = predictionDoc.data() as Prediction;
-          
+
+          setHasBeenSubmitted(predictionData.isComplete === true);
+
           // Map existing predictions to our format
           const existingPredictions = predictionData.picks.map(pick => ({
             position: pick.position,
@@ -432,10 +435,16 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
         predictionData
       );
       
-      setSuccess(isComplete 
-        ? 'Your predictions have been saved successfully!' 
+      setSuccess(isComplete
+        ? 'Your predictions have been saved successfully!'
         : 'Your progress has been saved. You can complete your predictions later.'
       );
+
+      setHasBeenSubmitted(isComplete);
+
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (error) {
       console.error('Error saving predictions:', error);
       setError('Failed to save predictions. Please try again.');
@@ -783,11 +792,28 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
           <button
             onClick={() => handleSavePredictions(true)}
             disabled={saving}
-            className={`bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg ${
+            className={`${
+              hasBeenSubmitted
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-blue-600 hover:bg-blue-700'
+            } text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg inline-flex items-center justify-center gap-2 ${
               saving ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
-            {saving ? 'Saving...' : isPredictionComplete ? 'Submit Complete Predictions' : 'Submit as Complete'}
+            {saving ? (
+              'Saving...'
+            ) : hasBeenSubmitted ? (
+              <>
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Predictions Submitted — Update
+              </>
+            ) : isPredictionComplete ? (
+              'Submit Complete Predictions'
+            ) : (
+              'Submit as Complete'
+            )}
           </button>
         </div>
       )}

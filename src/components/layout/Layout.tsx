@@ -58,6 +58,9 @@ export default function Layout({ children }: LayoutProps) {
                 <Link href="/draft-kit" className="text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
                   Draft Kit
                 </Link>
+                <Link href="/mock-drafts" className="text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
+                  Expert Mocks
+                </Link>
                 <Link href="/about" className="text-gray-600 hover:text-blue-600 px-3 py-2 text-sm font-medium transition-colors">
                   How it works
                 </Link>
@@ -151,6 +154,13 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={() => setMenuOpen(false)}
               >
                 Draft Kit
+              </Link>
+              <Link
+                href="/mock-drafts"
+                className="block text-gray-700 hover:text-blue-600 py-2"
+                onClick={() => setMenuOpen(false)}
+              >
+                Expert Mocks
               </Link>
               <Link
                 href="/about"
