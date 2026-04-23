@@ -17,7 +17,7 @@ export const metadata = {
     siteName: 'Draft Day Trades',
     images: [
       {
-        url: 'https://www.draftdaytrades.com/images/ddt_gettleman.png',
+        url: 'https://www.draftdaytrades.com/images/ddt_dg.png',
         width: 1200,
         height: 630,
         alt: 'Draft Day Trades',
@@ -31,7 +31,7 @@ export const metadata = {
     title: 'Draft Day Trades | Sports Draft Prediction Pools',
     description: 'Predict draft picks, assign confidence points, and compete with friends',
     creator: '@seanmun',
-    images: ['https://www.draftdaytrades.com/images/ddt_gettleman.png'],
+    images: ['https://www.draftdaytrades.com/images/ddt_dg.png'],
   },
   icons: {
     icon: [
