@@ -16,7 +16,7 @@ export default function ManageTeamsPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
   const [sportType, setSportType] = useState<SportType>('NFL');
-  const [draftYear, setDraftYear] = useState<number>(2025);
+  const [draftYear, setDraftYear] = useState<number>(2026);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   

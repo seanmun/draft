@@ -16,7 +16,7 @@ export default function ManagePlayersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [players, setPlayers] = useState<Player[]>([]);
   const [selectedSport, setSelectedSport] = useState<SportType>('NFL');
-  const [selectedYear, setSelectedYear] = useState<number>(2025);
+  const [selectedYear, setSelectedYear] = useState<number>(2026);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearResult, setClearResult] = useState<string>('');

@@ -14,7 +14,7 @@ export default function CreateLeagueForm() {
     name: '',
     description: '',
     sportType: 'NFL' as SportType,
-    draftYear: 2025,
+    draftYear: 2026,
     totalPicks: 32,
     publicJoin: false,
   });

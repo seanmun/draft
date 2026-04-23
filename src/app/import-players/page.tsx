@@ -9,7 +9,7 @@ export default function ImportPlayersPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string>('');
   const [sportType, setSportType] = useState<SportType>('NFL');
-  const [draftYear, setDraftYear] = useState<number>(2025);
+  const [draftYear, setDraftYear] = useState<number>(2026);
   const [file, setFile] = useState<File | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

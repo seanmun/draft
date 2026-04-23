@@ -37,7 +37,7 @@ export default function OraclePage() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [draftResults, setDraftResults] = useState<ActualPickWithId[]>([]);
   const [sportType, setSportType] = useState<SportType>('NFL');
-  const [draftYear, setDraftYear] = useState<number>(2025);
+  const [draftYear, setDraftYear] = useState<number>(2026);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState({ message: '', type: '' });

@@ -36,6 +36,9 @@ export default function MockDraftsPage() {
       .trim();
   };
 
+  const NFL_YEAR = 2026;
+  const NBA_YEAR = 2025;
+
   useEffect(() => {
     fetchMockDraftsWithScores();
   }, []);
@@ -46,10 +49,10 @@ export default function MockDraftsPage() {
 
       // Fetch mock drafts and draft results in parallel (2 queries per sport instead of N+2)
       const [nflDrafts, nbaDrafts, nflResults, nbaResults] = await Promise.all([
-        getMockDraftsBySportAndYear('NFL', 2025),
-        getMockDraftsBySportAndYear('NBA', 2025),
-        fetchDraftResults('NFL', 2025),
-        fetchDraftResults('NBA', 2025)
+        getMockDraftsBySportAndYear('NFL', NFL_YEAR),
+        getMockDraftsBySportAndYear('NBA', NBA_YEAR),
+        fetchDraftResults('NFL', NFL_YEAR),
+        fetchDraftResults('NBA', NBA_YEAR)
       ]);
 
       // Build results lookup by sport
@@ -244,17 +247,17 @@ export default function MockDraftsPage() {
 
   // Schema for the mock drafts collection
   const mockDraftsSchema = {
-    name: "2025 Sports Mock Drafts Hub with Expert Accuracy Scores",
+    name: "2026 NFL & 2025 NBA Mock Drafts Hub with Expert Accuracy Scores",
     description: "Comprehensive collection of NFL and NBA mock drafts from top experts with real-time accuracy scoring and performance tracking",
     url: "https://draftdaytrades.com/mock-drafts",
     about: [
       {
         "@type": "SportsEvent",
-        name: "2025 NFL Draft",
+        name: "2026 NFL Draft",
         sport: "American Football"
       },
       {
-        "@type": "SportsEvent", 
+        "@type": "SportsEvent",
         name: "2025 NBA Draft",
         sport: "Basketball"
       }
@@ -293,7 +296,7 @@ export default function MockDraftsPage() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-extrabold mb-4 text-gray-900">2025 Mock Drafts: Expert Predictions & Accuracy Scores</h1>
+          <h1 className="text-4xl font-extrabold mb-4 text-gray-900">2026 NFL Mock Drafts: Expert Predictions & Accuracy Scores</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Compare the latest mock drafts from top experts with real-time accuracy tracking. 
             See which experts predicted the draft best and create your own prediction leagues.
@@ -364,15 +367,15 @@ export default function MockDraftsPage() {
           {/* NFL Section */}
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-bold">NFL Mock Drafts 2025</h2>
-              {/* <TrackableLink
-                href="/nfl/2025/mock-drafts"
+              <h2 className="text-3xl font-bold">NFL Mock Drafts 2026</h2>
+              <TrackableLink
+                href="/mock-drafts/nfl/2025"
                 fromPage="/mock-drafts"
-                linkText="View All NFL Mock Drafts"
+                linkText="View 2025 NFL Mock Drafts Archive"
                 className="text-blue-600 hover:text-blue-800 font-medium"
               >
-                View All NFL Mock Drafts →
-              </TrackableLink> */}
+                View 2025 Archive →
+              </TrackableLink>
             </div>
             
             {nflDrafts.length === 0 ? (
@@ -414,7 +417,7 @@ export default function MockDraftsPage() {
                         </div>
                         <div className="flex-shrink-0">
                           <TrackableLink
-                            href={`/mock-drafts/nfl/2025/${expertNameToSlug(draft.sportscaster)}`}
+                            href={`/mock-drafts/nfl/${NFL_YEAR}/${expertNameToSlug(draft.sportscaster)}`}
                             fromPage="/mock-drafts"
                             linkText={`View ${draft.sportscaster} Mock Draft`}
                             className="text-blue-600 hover:text-blue-800 font-medium"
@@ -434,14 +437,6 @@ export default function MockDraftsPage() {
           <section>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-3xl font-bold">NBA Mock Drafts 2025</h2>
-              {/* <TrackableLink
-                href="/nba/2025/mock-drafts"
-                fromPage="/mock-drafts"
-                linkText="View All NBA Mock Drafts"
-                className="text-blue-600 hover:text-blue-800 font-medium"
-              >
-                View All NBA Mock Drafts →
-              </TrackableLink> */}
             </div>
             
             {nbaDrafts.length === 0 ? (
@@ -483,7 +478,7 @@ export default function MockDraftsPage() {
                         </div>
                         <div className="flex-shrink-0">
                           <TrackableLink
-                            href={`/mock-drafts/nba/2025/${expertNameToSlug(draft.sportscaster)}`}
+                            href={`/mock-drafts/nba/${NBA_YEAR}/${expertNameToSlug(draft.sportscaster)}`}
                             fromPage="/mock-drafts"
                             linkText={`View ${draft.sportscaster} NBA Mock Draft`}
                             className="text-blue-600 hover:text-blue-800 font-medium"

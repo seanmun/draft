@@ -38,7 +38,7 @@ export default function GlobalDraftManager() {
   
   // Global draft settings
   const [sportType, setSportType] = useState<SportType>('NFL');
-  const [draftYear, setDraftYear] = useState<number>(2025);
+  const [draftYear, setDraftYear] = useState<number>(2026);
   const [totalPicks, setTotalPicks] = useState<number>(32);
   
   useEffect(() => {

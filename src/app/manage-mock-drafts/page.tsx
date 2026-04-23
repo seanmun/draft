@@ -16,7 +16,7 @@ export default function ManageMockDraftsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [sportType, setSportType] = useState<SportType>('NFL');
-  const [draftYear, setDraftYear] = useState<number>(2025);
+  const [draftYear, setDraftYear] = useState<number>(2026);
   const [sportscaster, setSportscaster] = useState('');
   const [version, setVersion] = useState('');
   const [csvData, setCsvData] = useState('');

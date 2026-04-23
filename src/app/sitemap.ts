@@ -123,32 +123,35 @@ async function generatePlayerSitemap(baseUrl: string): Promise<SitemapEntry[]> {
   try {
     const playerPages: SitemapEntry[] = [];
     const sports = ['NFL', 'NBA', 'NHL', 'MLB', 'WNBA'];
-    
+    const years = [2025, 2026];
+
     for (const sport of sports) {
-      const playersQuery = query(
-        collection(db, 'players'),
-        where('sportType', '==', sport),
-        where('draftYear', '==', 2025)
-      );
-      
-      const playersSnapshot = await getDocs(playersQuery);
-      
-      playersSnapshot.docs.forEach(doc => {
-        const player = doc.data();
-        const playerSlug = player.name.toLowerCase()
-          .replace(/[^a-z0-9]/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
-          
-        playerPages.push({
-          url: `${baseUrl}/${sport.toLowerCase()}/2025/players/${playerSlug}`,
-          lastModified: new Date(),
-          changeFrequency: 'weekly',
-          priority: 0.6,
+      for (const year of years) {
+        const playersQuery = query(
+          collection(db, 'players'),
+          where('sportType', '==', sport),
+          where('draftYear', '==', year)
+        );
+
+        const playersSnapshot = await getDocs(playersQuery);
+
+        playersSnapshot.docs.forEach(doc => {
+          const player = doc.data();
+          const playerSlug = player.name.toLowerCase()
+            .replace(/[^a-z0-9]/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '');
+
+          playerPages.push({
+            url: `${baseUrl}/${sport.toLowerCase()}/${year}/players/${playerSlug}`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly',
+            priority: 0.6,
+          });
         });
-      });
+      }
     }
-    
+
     return playerPages;
   } catch (error) {
     console.error('Error generating player sitemap:', error);
