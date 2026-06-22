@@ -4,7 +4,7 @@ import { db } from './firebase';
 import { Player, SportType, ActualPick } from './types';
 
 // Admin user ID
-export const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || '';
+export const ADMIN_USER_ID = process.env.NEXT_PUBLIC_ADMIN_USER_ID || 'gT2kV06j0udPRzdPBd0jt82ufNk2';
 
 // Check if a user is an admin
 export const isAdmin = (userId: string): boolean => {
