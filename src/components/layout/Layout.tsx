@@ -3,6 +3,7 @@ import { ReactNode, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 import { auth } from '../../lib/firebase';
+import { isAdmin } from '../../lib/admin';
 import Link from 'next/link';
 import UserAvatar from '../common/UserAvatar';
 import AcknowledgmentsModal from '../modals/AcknowledgmentsModal';
@@ -100,7 +101,16 @@ export default function Layout({ children }: LayoutProps) {
                     >
                       My Leagues
                     </Link>
-                    <button 
+                    {isAdmin(user.uid) && (
+                      <Link
+                        href="/admin"
+                        className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        Admin
+                      </Link>
+                    )}
+                    <button
                       onClick={() => {
                         handleSignOut();
                         setMenuOpen(false);
@@ -178,7 +188,16 @@ export default function Layout({ children }: LayoutProps) {
                   >
                     Profile
                   </Link>
-                  <button 
+                  {isAdmin(user.uid) && (
+                    <Link
+                      href="/admin"
+                      className="block text-gray-700 hover:text-blue-600 py-2"
+                      onClick={() => setMenuOpen(false)}
+                    >
+                      Admin
+                    </Link>
+                  )}
+                  <button
                     onClick={() => {
                       handleSignOut();
                       setMenuOpen(false);
