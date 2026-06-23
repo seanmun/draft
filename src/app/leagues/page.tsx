@@ -11,6 +11,10 @@ import type { League, Prediction, ActualPick } from '../../lib/types';
 
 // Define interface for league with user rank information
 interface LeagueWithRank extends League {
+  // True when the current user has submitted/completed their predictions for this league
+  predictionComplete: boolean;
+  // True when the draft is finished (all picks have results) — used to archive the league
+  isCompleted: boolean;
   userRank: {
     rank: number;
     totalMembers: number;
@@ -105,6 +109,7 @@ export default function LeaguesPage() {
               userId: data.userId,
               leagueId: data.leagueId,
               picks: data.picks,
+              isComplete: data.isComplete,
               createdAt: data.createdAt?.toDate(),
               updatedAt: data.updatedAt?.toDate(),
             } as Prediction;
@@ -116,15 +121,24 @@ export default function LeaguesPage() {
       // 5. Calculate ranks using cached data (pure computation, no more queries)
       const leaguesWithRanks = leaguesData.map((league) => {
         const predictions = predictionsMap.get(league.id) || [];
+        const results = resultsCache.get(`${league.sportType}|${league.draftYear}`) || [];
+
+        // A draft is "completed" (archive) once every pick has an actual result
+        const totalPicks = league.settings?.totalPicks || 0;
+        const isCompleted = totalPicks > 0 && results.length >= totalPicks;
+
+        // Whether the current user has finished their predictions for this league
+        const userPrediction = predictions.find(p => p.userId === user.uid);
+        const predictionComplete = userPrediction?.isComplete === true;
 
         if (predictions.length === 0) {
           return {
             ...league,
+            predictionComplete,
+            isCompleted,
             userRank: { rank: 0, totalMembers: league.members.length, score: 0, possiblePoints: 0 }
           };
         }
-
-        const results = resultsCache.get(`${league.sportType}|${league.draftYear}`) || [];
 
         const scores = predictions.map(prediction => {
           let score = 0;
@@ -153,7 +167,7 @@ export default function LeaguesPage() {
           userRank = { rank, totalMembers: league.members.length, score: userScore.score, possiblePoints: userScore.possiblePoints };
         }
 
-        return { ...league, userRank };
+        return { ...league, predictionComplete, isCompleted, userRank };
       });
 
       setLeagues(leaguesWithRanks);
@@ -296,6 +310,58 @@ export default function LeaguesPage() {
     return null; // This will not render as the useEffect will redirect
   }
 
+  // Split leagues into live (draft not finished) and archived (draft completed)
+  const liveLeagues = leagues.filter(l => !l.isCompleted);
+  const archivedLeagues = leagues.filter(l => l.isCompleted);
+
+  const renderLeagueCard = (league: LeagueWithRank) => {
+    const needsPredictions = !league.isCompleted && !league.predictionComplete;
+    return (
+      <Link href={`/leagues/${league.id}`} key={league.id}>
+        <div className={`card-hover bg-white rounded-xl shadow-sm border p-6 transition-colors cursor-pointer h-full ${
+          needsPredictions
+            ? 'border-amber-400 ring-2 ring-amber-300 hover:border-amber-500'
+            : `border-gray-200 hover:border-blue-400 ${league.isCompleted ? 'opacity-80' : ''}`
+        }`}>
+          <div className="flex justify-between items-start mb-2">
+            <h2 className="text-xl font-semibold">{league.name}</h2>
+            {renderRankBadge(league.userRank.rank, league.userRank.totalMembers)}
+          </div>
+
+          {needsPredictions && (
+            <div className="inline-flex items-center text-xs font-semibold text-amber-800 bg-amber-100 px-2 py-1 rounded-full mb-2">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Predictions not submitted
+            </div>
+          )}
+
+          <div className="flex items-center text-sm text-gray-500 mb-2">
+            <span className="mr-2">{league.sportType}</span>
+            <span>Draft {league.draftYear}</span>
+          </div>
+
+          {league.description && (
+            <p className="text-gray-600 mb-4 line-clamp-2">{league.description}</p>
+          )}
+
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500">
+              {league.members.length} {league.members.length === 1 ? 'member' : 'members'}
+            </div>
+
+            {league.userRank.rank > 0 && (
+              <div className="text-sm text-gray-600">
+                Score: {league.userRank.score}/{league.userRank.possiblePoints}
+              </div>
+            )}
+          </div>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-6">
@@ -330,38 +396,30 @@ export default function LeaguesPage() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {leagues.map(league => (
-            <Link href={`/leagues/${league.id}`} key={league.id}>
-              <div className="card-hover bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-blue-400 transition-colors cursor-pointer h-full">
-                <div className="flex justify-between items-start mb-2">
-                  <h2 className="text-xl font-semibold">{league.name}</h2>
-                  {renderRankBadge(league.userRank.rank, league.userRank.totalMembers)}
-                </div>
-                
-                <div className="flex items-center text-sm text-gray-500 mb-2">
-                  <span className="mr-2">{league.sportType}</span>
-                  <span>Draft {league.draftYear}</span>
-                </div>
-                
-                {league.description && (
-                  <p className="text-gray-600 mb-4 line-clamp-2">{league.description}</p>
-                )}
-                
-                <div className="flex justify-between items-center">
-                  <div className="text-sm text-gray-500">
-                    {league.members.length} {league.members.length === 1 ? 'member' : 'members'}
-                  </div>
-                  
-                  {league.userRank.rank > 0 && (
-                    <div className="text-sm text-gray-600">
-                      Score: {league.userRank.score}/{league.userRank.possiblePoints}
-                    </div>
-                  )}
-                </div>
+        <div className="space-y-10">
+          {liveLeagues.length > 0 && (
+            <section>
+              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                <span className="relative flex h-2.5 w-2.5 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </span>
+                Live Leagues
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {liveLeagues.map(renderLeagueCard)}
               </div>
-            </Link>
-          ))}
+            </section>
+          )}
+
+          {archivedLeagues.length > 0 && (
+            <section>
+              <h2 className="text-lg font-bold text-gray-500 mb-4">Archive</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {archivedLeagues.map(renderLeagueCard)}
+              </div>
+            </section>
+          )}
         </div>
       )}
       
