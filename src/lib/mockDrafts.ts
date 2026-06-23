@@ -71,10 +71,17 @@ export const importMockDraftFromCSV = async (
       );
     }
 
-    // Normalize player names by removing extra spaces, etc.
+    // Normalize player names by removing extra spaces, punctuation, and
+    // generational suffixes (Jr/Sr/II/III/IV) so "Morez Johnson Jr." matches
+    // "Morez Johnson" regardless of which side includes the suffix.
     const normalizePlayerName = (name: string) => {
-      // Remove all non-alphanumeric characters and convert to lowercase
-      return name.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ');
+      return name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9 ]/g, '')        // drop punctuation (periods, commas)
+        .replace(/\b(jr|sr|ii|iii|iv)\b/g, '') // drop generational suffixes
+        .replace(/\s+/g, ' ')
+        .trim();
     };
     
     // Create multiple maps for different ways of matching
