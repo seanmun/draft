@@ -176,6 +176,36 @@ export default function ManageTeamsPage() {
     }
   };
   
+  const handleDeleteAllTeams = async () => {
+    if (teams.length === 0) return;
+    if (!confirm(`Delete ALL ${teams.length} teams for ${sportType} ${draftYear}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const q = query(
+        collection(db, 'teams'),
+        where('sportType', '==', sportType),
+        where('draftYear', '==', draftYear)
+      );
+      const snapshot = await getDocs(q);
+
+      // Firestore batches are limited to 500 ops — chunk to be safe
+      const docs = snapshot.docs;
+      for (let i = 0; i < docs.length; i += 450) {
+        const batch = writeBatch(db);
+        docs.slice(i, i + 450).forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+
+      setSuccess(`Deleted all ${docs.length} teams for ${sportType} ${draftYear}`);
+      await fetchTeams();
+    } catch (error) {
+      console.error('Error deleting all teams:', error);
+      setError('Failed to delete all teams');
+    }
+  };
+
   const handleBulkUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!event.target.files || event.target.files.length === 0) {
       return;
@@ -205,6 +235,10 @@ export default function ManageTeamsPage() {
       // Create batch for bulk operation
       const batch = writeBatch(db);
       const teamsCollectionRef = collection(db, 'teams');
+      // Map existing teams (this sport/year) by pick so re-imports OVERWRITE the
+      // same pick instead of creating duplicates. Pick is the unique qualifier.
+      const existingByPick = new Map<number, string>(teams.map(t => [t.pick, t.id]));
+      const seenPicks = new Set<number>();
       let count = 0;
       
       // Process data rows
@@ -220,7 +254,9 @@ export default function ManageTeamsPage() {
         const pick = parseInt(values[pickIndex]);
         
         if (!name || !abbr || isNaN(pick)) continue; // Skip invalid data
-        
+        if (seenPicks.has(pick)) continue; // Ignore duplicate pick rows within the file
+        seenPicks.add(pick);
+
         // Parse needs if available
         const needs = needsIndex !== -1 && values[needsIndex] 
           ? values[needsIndex].split(';').map(n => n.trim()) 
@@ -240,8 +276,9 @@ export default function ManageTeamsPage() {
           draftYear
         };
         
-        // Add to batch
-        const docRef = doc(teamsCollectionRef);
+        // Upsert: reuse the existing doc for this pick, otherwise create a new one
+        const existingId = existingByPick.get(pick);
+        const docRef = existingId ? doc(db, 'teams', existingId) : doc(teamsCollectionRef);
         batch.set(docRef, teamData);
         count++;
       }
@@ -439,8 +476,16 @@ export default function ManageTeamsPage() {
       {/* Teams List */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Teams</h2>
+          <h2 className="text-xl font-semibold">Teams ({teams.length})</h2>
           <div className="flex space-x-3">
+            {teams.length > 0 && (
+              <button
+                onClick={handleDeleteAllTeams}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+              >
+                Delete All
+              </button>
+            )}
             <button
               onClick={handleAddNew}
               className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
