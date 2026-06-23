@@ -160,15 +160,26 @@ export default function ManagePlayersPage() {
       ));
       const all = snap.docs.map(d => ({ id: d.id, name: (d.data().name as string) || '' }));
 
-      // 2. Collect every playerId referenced by mock drafts and predictions
+      // 2. Collect every playerId referenced by mock drafts (and predictions if
+      // readable). These reads are best-effort: if security rules block one, we
+      // skip it rather than aborting — a blocked collection just isn't used for
+      // reference protection.
       setDedupResult('Checking references in mock drafts & predictions...');
       const referenced = new Set<string>();
-      const [mockSnap, predSnap] = await Promise.all([
-        getDocs(collection(db, 'mockDrafts')),
-        getDocs(collection(db, 'predictions')),
-      ]);
-      mockSnap.forEach(d => (d.data().picks || []).forEach((p: { playerId?: string }) => p.playerId && referenced.add(p.playerId)));
-      predSnap.forEach(d => (d.data().picks || []).forEach((p: { playerId?: string }) => p.playerId && referenced.add(p.playerId)));
+      let predictionsChecked = true;
+      try {
+        const mockSnap = await getDocs(collection(db, 'mockDrafts'));
+        mockSnap.forEach(d => (d.data().picks || []).forEach((p: { playerId?: string }) => p.playerId && referenced.add(p.playerId)));
+      } catch (e) {
+        console.warn('Could not read mockDrafts for reference check:', e);
+      }
+      try {
+        const predSnap = await getDocs(collection(db, 'predictions'));
+        predSnap.forEach(d => (d.data().picks || []).forEach((p: { playerId?: string }) => p.playerId && referenced.add(p.playerId)));
+      } catch (e) {
+        console.warn('Could not read predictions for reference check (permissions):', e);
+        predictionsChecked = false;
+      }
 
       // 3. Group players by normalized name
       const groups = new Map<string, { id: string; name: string }[]>();
@@ -207,7 +218,8 @@ export default function ManagePlayersPage() {
 
       setDedupResult(
         `✅ Removed ${toDelete.length} duplicate players.` +
-        (conflicts > 0 ? ` Kept ${conflicts} extra copies that are still referenced by a mock/prediction (rerun after fixing those if needed).` : '')
+        (conflicts > 0 ? ` Kept ${conflicts} extra copies still referenced by a mock/prediction.` : '') +
+        (predictionsChecked ? '' : ' Note: predictions were not readable (permissions), so dedup protected mock-draft references only.')
       );
       await fetchPlayers();
     } catch (error) {
