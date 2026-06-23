@@ -62,7 +62,7 @@ export default function Home() {
               height={220}
               priority
             />
-            <p className="text-xs text-gray-400 mt-2 italic text-center">You could be the next Sam Presti!</p>
+            <p className="text-xs text-gray-400 mt-2 italic text-center">You could be the next Joe Dumars!</p>
           </div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold mb-5 leading-tight text-gray-900">
