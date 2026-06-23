@@ -89,5 +89,9 @@ export interface MockDraft {
   picks: {
     position: number;
     playerId: string;
+    // The player's name at import time. Stored so mocks resolve by name even if
+    // the player's Firestore doc id changes (re-import / de-dup). Optional for
+    // backwards compatibility with mocks imported before this field existed.
+    playerName?: string;
   }[];
 }

@@ -179,7 +179,9 @@ export const importMockDraftFromCSV = async (
       }
       
       if (playerId) {
-        picks.push({ position, playerId });
+        // Store the name alongside the id so the mock can be re-resolved by name
+        // if the player's doc id ever changes (re-import / de-dup).
+        picks.push({ position, playerId, playerName });
       } else {
         missingPlayers.push({ position, playerName });
       }

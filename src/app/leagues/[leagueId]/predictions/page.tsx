@@ -351,24 +351,45 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
   
   // Create a copy of the current predictions to modify
   const updatedPredictions = [...predictions];
-  
+
+  // Normalize names the same way the importer does, so we can re-resolve a pick
+  // to the CURRENT player by name when its stored id is stale.
+  const normalizeName = (n: string) =>
+    n.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
+
+  let unresolved = 0;
+
   // Apply the mock draft picks
   mockDraft.picks.forEach(pick => {
     const predIndex = updatedPredictions.findIndex(p => p.position === pick.position);
-    if (predIndex !== -1) {
-      // Update the player but keep existing confidence if any
-      updatedPredictions[predIndex] = {
-        ...updatedPredictions[predIndex],
-        playerId: pick.playerId
-      };
+    if (predIndex === -1) return;
+
+    // Prefer the stored id if it still points to a real player; otherwise fall
+    // back to matching by the stored player name against the current roster.
+    let resolvedId: string | null = players.some(p => p.id === pick.playerId) ? pick.playerId : null;
+    if (!resolvedId && pick.playerName) {
+      const match = players.find(p => normalizeName(p.name) === normalizeName(pick.playerName!));
+      resolvedId = match ? match.id : null;
     }
+
+    if (!resolvedId) { unresolved++; return; }
+
+    // Update the player but keep existing confidence if any
+    updatedPredictions[predIndex] = {
+      ...updatedPredictions[predIndex],
+      playerId: resolvedId
+    };
   });
   
   // Update predictions state
   setPredictions(updatedPredictions);
-  
-  // Show success message
-  setSuccess(`Successfully applied ${mockDraft.sportscaster}'s mock draft (${mockDraft.version})`);
+
+  // Show success message (warn if some picks could not be matched to a player)
+  if (unresolved > 0) {
+    setSuccess(`Applied ${mockDraft.sportscaster}'s mock draft (${mockDraft.version}). Note: ${unresolved} pick(s) couldn't be matched to a current player — that mock needs to be re-imported.`);
+  } else {
+    setSuccess(`Successfully applied ${mockDraft.sportscaster}'s mock draft (${mockDraft.version})`);
+  }
 };
   
   const handleApplyChalk = () => {
