@@ -16,7 +16,7 @@ export default function DraftKitPage() {
       try {
         const q = query(
           collection(db, 'players'),
-          where('sportType', '==', 'NFL'),
+          where('sportType', '==', 'NBA'),
           where('draftYear', '==', 2026)
         );
         const snapshot = await getDocs(q);
@@ -37,7 +37,7 @@ export default function DraftKitPage() {
       try {
         const q = query(
           collection(db, 'teams'),
-          where('sportType', '==', 'NFL'),
+          where('sportType', '==', 'NBA'),
           where('draftYear', '==', 2026)
         );
         const snapshot = await getDocs(q);
@@ -63,10 +63,10 @@ export default function DraftKitPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">
-          2026 NFL <span className="text-gradient">Draft Kit</span>
+          2026 NBA <span className="text-gradient">Draft Kit</span>
         </h1>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
-          Everything you need to prepare for the 2026 NFL Draft. Team draft order, records, and top prospects.
+          Everything you need to prepare for the 2026 NBA Draft. Team draft order, records, and top prospects.
         </p>
         <SportIcons />
       </div>
@@ -78,7 +78,7 @@ export default function DraftKitPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden lg:sticky lg:top-4">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-bold text-gray-900">Draft Order</h2>
-              <p className="text-sm text-gray-500 mt-1">2026 NFL Draft</p>
+              <p className="text-sm text-gray-500 mt-1">2026 NBA Draft</p>
             </div>
             {loadingTeams ? (
               <div className="p-6 text-center text-gray-400">
@@ -123,7 +123,7 @@ export default function DraftKitPage() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200">
               <h2 className="text-lg font-bold text-gray-900">Top Prospects</h2>
-              <p className="text-sm text-gray-500 mt-1">2026 NFL Draft</p>
+              <p className="text-sm text-gray-500 mt-1">2026 NBA Draft</p>
             </div>
             {loadingProspects ? (
               <div className="p-6 text-center text-gray-400">

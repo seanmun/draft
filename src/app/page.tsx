@@ -9,7 +9,7 @@ import SportIcons from '../components/home/SportIcons';
 const faqs = [
   {
     question: "What is Draft Day Trades?",
-    answer: "Draft Day Trades is a platform where you can create prediction leagues for sports drafts. Pick which players will be drafted, assign confidence points, and compete with friends across NFL, NBA, MLB, NHL, and WNBA drafts."
+    answer: "Draft Day Trades is a platform where you can create prediction leagues for sports drafts. Pick which players will be drafted, assign confidence points, and compete with friends across NBA, NFL, MLB, NHL, and WNBA drafts."
   },
   {
     question: "How do confidence points work?",
@@ -17,7 +17,7 @@ const faqs = [
   },
   {
     question: "What sports are supported?",
-    answer: "We support NFL, NBA, MLB, NHL, and WNBA drafts. You can create prediction leagues for any of these sports."
+    answer: "We support NBA, NFL, MLB, NHL, and WNBA drafts. You can create prediction leagues for any of these sports."
   },
   {
     question: "Is it free to play?",
@@ -33,7 +33,7 @@ const organizationSchema = {
   name: "Draft Day Trades",
   url: "https://draftdaytrades.com",
   logo: "https://draftdaytrades.com/images/ddt_jd.png",
-  description: "Sports draft prediction leagues and confidence pools for NFL, NBA, MLB, NHL, and WNBA drafts",
+  description: "Sports draft prediction leagues and confidence pools for NBA, NFL, MLB, NHL, and WNBA drafts",
   applicationCategory: "Sports Game",
   operatingSystem: "Web Browser",
   offers: {
@@ -62,14 +62,14 @@ export default function Home() {
               height={220}
               priority
             />
-            <p className="text-xs text-gray-400 mt-2 italic text-center">You could be the next Dave Gettleman!</p>
+            <p className="text-xs text-gray-400 mt-2 italic text-center">You could be the next Sam Presti!</p>
           </div>
 
           <h1 className="text-4xl md:text-5xl font-extrabold mb-5 leading-tight text-gray-900">
             Sports Draft <span className="text-gradient">Prediction Leagues</span>
           </h1>
           <p className="text-lg md:text-xl mb-10 max-w-2xl text-gray-600">
-            Create prediction leagues for NFL, NBA, MLB, NHL & WNBA drafts. Assign confidence points to your picks and compete with friends in real-time during draft night!
+            Create prediction leagues for NBA, NFL, MLB, NHL & WNBA drafts. Assign confidence points to your picks and compete with friends in real-time during draft night!
           </p>
 
           <SportIcons />
@@ -99,7 +99,7 @@ export default function Home() {
             >
               <div className="font-bold text-lg mb-2 text-gray-900 group-hover:text-blue-600">Expert Mock Drafts</div>
               <div className="text-sm text-gray-500 mb-4">
-                Compare NFL & NBA mock drafts from top analysts like Mel Kiper Jr., Daniel Jeremiah, and more
+                Compare NBA & NFL mock drafts from top analysts like Sam Vecenie, Jeremy Woo, and more
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-400">Updated Daily</span>
@@ -114,7 +114,7 @@ export default function Home() {
             >
               <div className="font-bold text-lg mb-2 text-gray-900 group-hover:text-blue-600">Create Prediction League</div>
               <div className="text-sm text-gray-500 mb-4">
-                Start your own draft prediction contest with friends across NFL, NBA, and more sports
+                Start your own draft prediction contest with friends across NBA, NFL, and more sports
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-gray-400">Free to Play</span>
