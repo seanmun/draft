@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { Player, SportType } from '../../lib/types';
@@ -20,6 +20,8 @@ export default function ManagePlayersPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearResult, setClearResult] = useState<string>('');
+  const [dedupLoading, setDedupLoading] = useState(false);
+  const [dedupResult, setDedupResult] = useState<string>('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -136,6 +138,86 @@ export default function ManagePlayersPage() {
     }
   };
 
+  // Remove duplicate players for the selected sport/year WITHOUT breaking mock
+  // drafts or predictions: for each player name we keep the copy that is already
+  // referenced by a mock/prediction and delete only the unreferenced extras.
+  const handleRemoveDuplicates = async () => {
+    if (!confirm(`Scan ${selectedSport} ${selectedYear} for duplicate players and remove the extra copies? Copies referenced by mock drafts or predictions are preserved.`)) {
+      return;
+    }
+    setDedupLoading(true);
+    setDedupResult('Scanning for duplicates...');
+
+    try {
+      const norm = (n: string) =>
+        n.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
+
+      // 1. All players for this sport/year
+      const snap = await getDocs(query(
+        collection(db, 'players'),
+        where('sportType', '==', selectedSport),
+        where('draftYear', '==', selectedYear)
+      ));
+      const all = snap.docs.map(d => ({ id: d.id, name: (d.data().name as string) || '' }));
+
+      // 2. Collect every playerId referenced by mock drafts and predictions
+      setDedupResult('Checking references in mock drafts & predictions...');
+      const referenced = new Set<string>();
+      const [mockSnap, predSnap] = await Promise.all([
+        getDocs(collection(db, 'mockDrafts')),
+        getDocs(collection(db, 'predictions')),
+      ]);
+      mockSnap.forEach(d => (d.data().picks || []).forEach((p: { playerId?: string }) => p.playerId && referenced.add(p.playerId)));
+      predSnap.forEach(d => (d.data().picks || []).forEach((p: { playerId?: string }) => p.playerId && referenced.add(p.playerId)));
+
+      // 3. Group players by normalized name
+      const groups = new Map<string, { id: string; name: string }[]>();
+      all.forEach(p => {
+        const k = norm(p.name);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k)!.push(p);
+      });
+
+      // 4. Decide which docs to delete (keep one referenced copy; never delete a referenced doc)
+      const toDelete: string[] = [];
+      let conflicts = 0;
+      groups.forEach(group => {
+        if (group.length <= 1) return;
+        const refd = group.filter(p => referenced.has(p.id));
+        const keeper = refd[0] || group[0];
+        group.forEach(p => {
+          if (p.id === keeper.id) return;
+          if (referenced.has(p.id)) { conflicts++; return; } // referenced elsewhere — keep it
+          toDelete.push(p.id);
+        });
+      });
+
+      if (toDelete.length === 0) {
+        setDedupResult('✅ No removable duplicates found.');
+        return;
+      }
+
+      // 5. Delete in batches (Firestore 500-op limit)
+      for (let i = 0; i < toDelete.length; i += 450) {
+        const batch = writeBatch(db);
+        toDelete.slice(i, i + 450).forEach(id => batch.delete(doc(db, 'players', id)));
+        await batch.commit();
+        setDedupResult(`Deleting duplicates... ${Math.min(i + 450, toDelete.length)}/${toDelete.length}`);
+      }
+
+      setDedupResult(
+        `✅ Removed ${toDelete.length} duplicate players.` +
+        (conflicts > 0 ? ` Kept ${conflicts} extra copies that are still referenced by a mock/prediction (rerun after fixing those if needed).` : '')
+      );
+      await fetchPlayers();
+    } catch (error) {
+      console.error('Error removing duplicates:', error);
+      setDedupResult(`Error removing duplicates: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setDedupLoading(false);
+    }
+  };
+
   if (authLoading) {
     return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
   }
@@ -236,12 +318,28 @@ export default function ManagePlayersPage() {
                   : 'bg-red-600 hover:bg-red-700'
               }`}
             >
-              {clearLoading 
-                ? 'Clearing...' 
+              {clearLoading
+                ? 'Clearing...'
                 : `Clear All ${selectedSport} ${selectedYear} Players (${players.length})`
               }
             </button>
-            
+
+            <button
+              onClick={handleRemoveDuplicates}
+              disabled={dedupLoading || players.length === 0}
+              className={`w-full font-medium py-2 px-4 rounded text-white ${
+                dedupLoading || players.length === 0
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-amber-600 hover:bg-amber-700'
+              }`}
+            >
+              {dedupLoading ? 'Removing duplicates...' : 'Remove Duplicate Players (safe)'}
+            </button>
+
+            {dedupResult && (
+              <pre className="whitespace-pre-wrap text-sm text-amber-700 bg-amber-50 p-2 rounded">{dedupResult}</pre>
+            )}
+
             {players.length === 0 && (
               <p className="text-sm text-gray-500 text-center">
                 No players to clear for {selectedSport} {selectedYear}

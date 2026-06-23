@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { collection, writeBatch, doc } from 'firebase/firestore';
+import { collection, writeBatch, doc, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { SportType } from '../../lib/types';
 import Link from 'next/link';
@@ -68,12 +68,30 @@ export default function ImportPlayersPage() {
       }
       
       setResult(`Found ${players.length} players. Importing to database...`);
-      
+
+      // Upsert by name: reuse the existing doc for a player (same sport/year/name)
+      // instead of creating a new one, so re-importing OVERWRITES rather than
+      // duplicating. Pull existing players once and map them by normalized name.
+      const norm = (n: string) =>
+        n.trim().toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\b(jr|sr|ii|iii|iv)\b/g, '').replace(/\s+/g, ' ').trim();
+      const existingSnap = await getDocs(query(
+        collection(db, 'players'),
+        where('sportType', '==', sportType),
+        where('draftYear', '==', draftYear)
+      ));
+      const existingByName = new Map<string, string>();
+      existingSnap.forEach(d => existingByName.set(norm((d.data().name as string) || ''), d.id));
+      const seenNames = new Set<string>();
+
       // Create Firestore batch to add all players at once
       const batch = writeBatch(db);
       let count = 0;
-      
+
       players.forEach((player) => {
+        const key = norm(player.name);
+        if (seenNames.has(key)) return; // ignore duplicate rows within the file
+        seenNames.add(key);
+
         const playerData = {
           name: player.name,
           position: player.position,
@@ -82,9 +100,10 @@ export default function ImportPlayersPage() {
           draftYear: draftYear,
           rank: player.rank,
         };
-        
-        const newPlayerRef = doc(collection(db, 'players'));
-        batch.set(newPlayerRef, playerData);
+
+        const existingId = existingByName.get(key);
+        const playerRef = existingId ? doc(db, 'players', existingId) : doc(collection(db, 'players'));
+        batch.set(playerRef, playerData);
         count++;
       });
       
