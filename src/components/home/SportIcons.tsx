@@ -4,8 +4,8 @@ import { Icon } from 'lucide-react';
 import { football, iceHockey, baseball, basketball } from '@lucide/lab';
 
 const sports = [
-  { name: 'NFL', icon: football, active: true },
-  { name: 'NBA', icon: basketball, active: false },
+  { name: 'NFL', icon: football, active: false },
+  { name: 'NBA', icon: basketball, active: true },
   { name: 'MLB', icon: baseball, active: false },
   { name: 'NHL', icon: iceHockey, active: false },
 ];
