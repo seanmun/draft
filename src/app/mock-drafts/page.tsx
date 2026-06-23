@@ -37,7 +37,7 @@ export default function MockDraftsPage() {
   };
 
   const NFL_YEAR = 2026;
-  const NBA_YEAR = 2025;
+  const NBA_YEAR = 2026;
 
   useEffect(() => {
     fetchMockDraftsWithScores();
@@ -247,7 +247,7 @@ export default function MockDraftsPage() {
 
   // Schema for the mock drafts collection
   const mockDraftsSchema = {
-    name: "2026 NFL & 2025 NBA Mock Drafts Hub with Expert Accuracy Scores",
+    name: "2026 NFL & 2026 NBA Mock Drafts Hub with Expert Accuracy Scores",
     description: "Comprehensive collection of NFL and NBA mock drafts from top experts with real-time accuracy scoring and performance tracking",
     url: "https://draftdaytrades.com/mock-drafts",
     about: [
@@ -258,7 +258,7 @@ export default function MockDraftsPage() {
       },
       {
         "@type": "SportsEvent",
-        name: "2025 NBA Draft",
+        name: "2026 NBA Draft",
         sport: "Basketball"
       }
     ],
@@ -436,7 +436,7 @@ export default function MockDraftsPage() {
           {/* NBA Section */}
           <section>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-3xl font-bold">NBA Mock Drafts 2025</h2>
+              <h2 className="text-3xl font-bold">NBA Mock Drafts 2026</h2>
             </div>
             
             {nbaDrafts.length === 0 ? (

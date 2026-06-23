@@ -214,7 +214,7 @@ export default function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Announcement Banner - Add this right after the header */}
-      <AnnouncementBanner sportType="NFL" draftYear={2026} />
+      <AnnouncementBanner sportType="NBA" draftYear={2026} />
       
       <main className="flex-grow">
         {children}
