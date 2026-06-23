@@ -53,19 +53,17 @@ export default function AnnouncementBanner({
   if (loading) return null;
 
   return (
-    <div className={`w-full py-3 px-4 text-center text-white font-bold ${
-      isLive ? 'bg-green-600' : 'bg-red-600'
-    }`}>
+    <div className="w-full py-3 px-4 text-center text-white font-bold bg-red-600">
       {isLive ? (
         <div className="flex items-center justify-center space-x-2">
           <span className="relative flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
             <span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span>
           </span>
-          <span className="uppercase tracking-wider">NFL Draft is LIVE!</span>
+          <span className="uppercase tracking-wider">NBA Draft is LIVE!</span>
         </div>
       ) : (
-        <span>NFL Draft begins April 23, 2026 — get your predictions in!</span>
+        <span>2026 NBA Draft begins at 8:00 p.m. ET</span>
       )}
     </div>
   );

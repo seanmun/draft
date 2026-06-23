@@ -56,7 +56,7 @@ export default function Home() {
         <div className="max-w-4xl mx-auto flex flex-col items-center text-center">
           <div className="mb-8">
             <Image
-              src="/images/ddt_gettleman.png"
+              src="/images/ddt_jd.png"
               alt="Draft Day Trades - Sports Draft Prediction Leagues Logo"
               width={220}
               height={220}

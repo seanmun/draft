@@ -65,6 +65,12 @@ export const importMockDraftFromCSV = async (
   players: Player[]
 ) => {
   try {
+    if (players.length === 0) {
+      throw new Error(
+        `No players loaded for ${sportType} ${draftYear}. Make sure players are imported and the correct sport/year is selected before uploading a mock draft.`
+      );
+    }
+
     // Normalize player names by removing extra spaces, etc.
     const normalizePlayerName = (name: string) => {
       // Remove all non-alphanumeric characters and convert to lowercase
@@ -176,15 +182,14 @@ export const importMockDraftFromCSV = async (
     // Handle the case where no picks were matched
     if (picks.length === 0 && missingPlayers.length === 0) {
       throw new Error('No valid picks found in the CSV file. Please check the format.');
-    } else if (picks.length === 0 && missingPlayers.length > 0) {
-      // No matching players found, but will create mock draft anyway with placeholder IDs
-      // Create temporary picks with placeholder IDs for testing
-      missingPlayers.forEach(mp => {
-        picks.push({
-          position: mp.position,
-          playerId: `placeholder_${mp.position}` // Use placeholder IDs
-        });
-      });
+    }
+    if (picks.length === 0 && missingPlayers.length > 0) {
+      const sample = missingPlayers.slice(0, 5).map(mp => mp.playerName).join(', ');
+      throw new Error(
+        `Could not match any player names in the CSV against your ${sportType} ${draftYear} player database (${players.length} players loaded). ` +
+        `Unmatched examples: ${sample}. ` +
+        `Check that (a) the correct year is selected and (b) names in the CSV match the imported player list.`
+      );
     }
     
     // Check if a mock draft already exists for this sportscaster, version, sport, and year
