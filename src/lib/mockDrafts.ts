@@ -1,5 +1,5 @@
 // src/lib/mockDrafts.ts
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { Player, SportType, MockDraft } from './types';
 
@@ -252,6 +252,16 @@ export const getMockDraftById = async (id: string) => {
     return { id: docSnap.id, ...docSnap.data() } as MockDraft;
   } catch (error) {
     console.error('Error getting mock draft by ID:', error);
+    throw error;
+  }
+};
+
+// Delete a mock draft by its document ID
+export const deleteMockDraft = async (id: string) => {
+  try {
+    await deleteDoc(doc(db, 'mockDrafts', id));
+  } catch (error) {
+    console.error('Error deleting mock draft:', error);
     throw error;
   }
 };

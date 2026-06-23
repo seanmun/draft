@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 import { isAdmin } from '../../lib/admin';
 import { getPlayersBySportAndYear } from '../../lib/admin';
-import { importMockDraftFromCSV, getMockDraftsBySportAndYear } from '../../lib/mockDrafts';
+import { importMockDraftFromCSV, getMockDraftsBySportAndYear, deleteMockDraft } from '../../lib/mockDrafts';
 import Link from 'next/link';
 import { Player, SportType, MockDraft } from '../../lib/types';
 
@@ -59,6 +59,19 @@ export default function ManageMockDraftsPage() {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDeleteMockDraft = async (mockDraft: MockDraft) => {
+    if (!confirm(`Delete mock draft "${mockDraft.sportscaster} — ${mockDraft.version}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteMockDraft(mockDraft.id);
+      setMockDrafts(prev => prev.filter(m => m.id !== mockDraft.id));
+      setFeedback({ message: `Deleted "${mockDraft.sportscaster} — ${mockDraft.version}"`, type: 'success' });
+    } catch {
+      setFeedback({ message: 'Failed to delete mock draft. Please try again.', type: 'error' });
     }
   };
 
@@ -351,6 +364,9 @@ export default function ManageMockDraftsPage() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Last Updated
                       </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
@@ -367,6 +383,14 @@ export default function ManageMockDraftsPage() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                           {formatDate(mockDraft.updatedAt)}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right text-sm">
+                          <button
+                            onClick={() => handleDeleteMockDraft(mockDraft)}
+                            className="text-red-600 hover:text-red-800 font-medium"
+                          >
+                            Delete
+                          </button>
                         </td>
                       </tr>
                     ))}
