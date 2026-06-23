@@ -143,62 +143,56 @@ export default function LeagueDetailPage() {
       
       setLeagueNote(note);
       
-      // Fetch actual user profiles from Firestore
-      const memberProfiles: UserProfile[] = [];
-      const userProfilesMap: Record<string, UserProfile> = {};
-      
-      // For each member ID, try to fetch their profile
-      for (const memberId of leagueData.members) {
-        try {
-          const userDoc = await getDoc(doc(db, 'users', memberId));
-          
-          if (userDoc.exists()) {
-            // Use data from the user document
-            const userData = userDoc.data();
-            const profile = {
-              id: memberId,
-              email: userData.email || 'No email',
-              displayName: userData.displayName || `User ${memberId.substring(0, 5)}`,
-              photoURL: userData.photoURL,
-              paymentInfo: userData.paymentInfo || ''
-            };
-            memberProfiles.push(profile);
-            userProfilesMap[memberId] = profile;
-          } else if (memberId === user.uid) {
-            // Fallback to current user data if they don't have a profile
-            const profile = {
-              id: user.uid,
-              email: user.email || '',
-              displayName: user.displayName || 'Anonymous',
-              photoURL: user.photoURL || undefined
-            };
-            memberProfiles.push(profile);
-            userProfilesMap[memberId] = profile;
-          } else {
-            // Fallback for other users
-            const profile = {
+      // Fetch actual user profiles from Firestore — in PARALLEL so a league with
+      // many members loads in one round-trip's time instead of N sequential ones.
+      const memberProfiles: UserProfile[] = await Promise.all(
+        leagueData.members.map(async (memberId): Promise<UserProfile> => {
+          try {
+            const userDoc = await getDoc(doc(db, 'users', memberId));
+
+            if (userDoc.exists()) {
+              // Use data from the user document
+              const userData = userDoc.data();
+              return {
+                id: memberId,
+                email: userData.email || 'No email',
+                displayName: userData.displayName || `User ${memberId.substring(0, 5)}`,
+                photoURL: userData.photoURL,
+                paymentInfo: userData.paymentInfo || ''
+              };
+            } else if (memberId === user.uid) {
+              // Fallback to current user data if they don't have a profile
+              return {
+                id: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || 'Anonymous',
+                photoURL: user.photoURL || undefined
+              };
+            } else {
+              // Fallback for other users
+              return {
+                id: memberId,
+                email: 'user@example.com',
+                displayName: `User ${memberId.substring(0, 5)}`,
+                photoURL: undefined
+              };
+            }
+          } catch (error) {
+            console.error(`Error fetching user ${memberId}:`, error);
+            // Add fallback user data
+            return {
               id: memberId,
               email: 'user@example.com',
               displayName: `User ${memberId.substring(0, 5)}`,
               photoURL: undefined
             };
-            memberProfiles.push(profile);
-            userProfilesMap[memberId] = profile;
           }
-        } catch (error) {
-          console.error(`Error fetching user ${memberId}:`, error);
-          // Add fallback user data
-          const profile = {
-            id: memberId,
-            email: 'user@example.com',
-            displayName: `User ${memberId.substring(0, 5)}`,
-            photoURL: undefined
-          };
-          memberProfiles.push(profile);
-          userProfilesMap[memberId] = profile;
-        }
-      }
-      
+        })
+      );
+
+      const userProfilesMap: Record<string, UserProfile> = {};
+      memberProfiles.forEach(profile => { userProfilesMap[profile.id] = profile; });
+
       setMembers(memberProfiles);
       
       // Get members' prediction status
