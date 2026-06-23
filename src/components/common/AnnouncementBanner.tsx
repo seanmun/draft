@@ -53,7 +53,7 @@ export default function AnnouncementBanner({
   if (loading) return null;
 
   return (
-    <div className="w-full py-3 px-4 text-center text-white font-bold bg-red-600">
+    <div className={`w-full py-3 px-4 text-center text-white font-bold ${isLive ? 'bg-green-600' : 'bg-red-600'}`}>
       {isLive ? (
         <div className="flex items-center justify-center space-x-2">
           <span className="relative flex h-3 w-3">
