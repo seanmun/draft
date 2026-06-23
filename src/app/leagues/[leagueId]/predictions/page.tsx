@@ -406,35 +406,25 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
     setPredictions(updatedPredictions);
   };
   
-  const handleSavePredictions = async (isComplete: boolean = false) => {
+  const handleSavePredictions = async () => {
     if (!user || !league) return;
-    
+
     // Prevent saving if draft is live
     if (draftIsLive) {
       setError('Predictions are locked. The draft is now live!');
       return;
     }
-    
-    // If saving as complete, validate predictions
-    if (isComplete) {
-      const missingPicks = predictions.some(p => p.playerId === null);
-      const missingConfidence = predictions.some(p => p.confidence === null);
-      
-      if (missingPicks) {
-        setError('Please select a player for each position');
-        return;
-      }
-      
-      if (missingConfidence) {
-        setError('Please assign a confidence rating to each pick');
-        return;
-      }
-    }
-    
+
+    // Saving doubles as submitting: a prediction counts as "submitted" once every
+    // position has both a player and a confidence value. Users can keep saving
+    // (and changing) right up until the draft starts.
+    const complete = predictions.every(p => p.playerId !== null && p.confidence !== null);
+    const remaining = predictions.filter(p => p.playerId === null || p.confidence === null).length;
+
     setSaving(true);
     setError('');
     setSuccess('');
-    
+
     try {
       // Format predictions for Firestore
       const predictionData: Prediction = {
@@ -447,21 +437,21 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
         })),
         createdAt: new Date(),
         updatedAt: new Date(),
-        isComplete: isComplete
+        isComplete: complete
       };
-      
+
       // Save to Firestore
       await setDoc(
-        doc(db, 'predictions', `${leagueId}_${user.uid}`), 
+        doc(db, 'predictions', `${leagueId}_${user.uid}`),
         predictionData
       );
-      
-      setSuccess(isComplete
-        ? 'Your predictions have been saved successfully!'
-        : 'Your progress has been saved. You can complete your predictions later.'
+
+      setSuccess(complete
+        ? 'Picks saved and submitted! You can keep changing them until the draft starts.'
+        : `Saved. ${remaining} pick${remaining === 1 ? '' : 's'} still need a player and confidence to be fully submitted.`
       );
 
-      setHasBeenSubmitted(isComplete);
+      setHasBeenSubmitted(complete);
 
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -799,19 +789,27 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
       </div>
       
       {!draftIsLive && (
-        <div className="flex flex-col md:flex-row justify-end gap-3 md:gap-4">
+        <div className="flex flex-col items-end gap-2">
+          {(() => {
+            const remainingCount = predictions.filter(p => p.playerId === null || p.confidence === null).length;
+            return remainingCount === 0 ? (
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                All picks complete — saving submits your entry
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2 text-sm font-medium text-amber-800 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-lg">
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                </svg>
+                {remainingCount} position{remainingCount === 1 ? '' : 's'} still need a player &amp; confidence to submit
+              </div>
+            );
+          })()}
           <button
-            onClick={() => handleSavePredictions(false)}
-            disabled={saving}
-            className={`bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-6 rounded-lg focus:outline-none focus:shadow-outline text-lg ${
-              saving ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-          >
-            {saving ? 'Saving...' : 'Save Progress'}
-          </button>
-          
-          <button
-            onClick={() => handleSavePredictions(true)}
+            onClick={() => handleSavePredictions()}
             disabled={saving}
             className={`${
               hasBeenSubmitted
@@ -828,14 +826,13 @@ const handleApplyMockDraft = (mockDraft: MockDraft) => {
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                Predictions Submitted — Update
+                Saved &amp; Submitted — Update Picks
               </>
-            ) : isPredictionComplete ? (
-              'Submit Complete Predictions'
             ) : (
-              'Submit as Complete'
+              'Save Picks'
             )}
           </button>
+          <p className="text-sm text-gray-500">You can change your picks any time until the draft starts.</p>
         </div>
       )}
       
