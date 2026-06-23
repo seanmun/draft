@@ -77,8 +77,10 @@ export default function ManageMockDraftsPage() {
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    // Always reset the input so re-selecting the SAME filename fires onChange again
+    event.target.value = '';
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
       const content = e.target?.result as string;
@@ -322,7 +324,25 @@ export default function ManageMockDraftsPage() {
                 CSV must include columns for &quot;position&quot; and &quot;player_name&quot;
               </p>
             </div>
-            
+
+            <div className="mb-4">
+              <label className="block text-gray-700 mb-2" htmlFor="csvPaste">
+                ...or paste CSV directly
+              </label>
+              <textarea
+                id="csvPaste"
+                value={csvData}
+                onChange={(e) => setCsvData(e.target.value)}
+                disabled={isSaving}
+                rows={8}
+                placeholder={'position,player_name\n1,Cooper Flagg\n2,Dylan Harper'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md font-mono text-sm"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Paste rows here if the file picker is giving you trouble. This overrides the file above.
+              </p>
+            </div>
+
             <div className="mt-6">
               <button
                 type="button"
