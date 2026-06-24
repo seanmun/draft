@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, addDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, setDoc, serverTimestamp, addDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import Link from 'next/link';
@@ -180,29 +180,53 @@ export default function GlobalDraftManager() {
     return players.find(p => p.id === playerId) || null;
   };
   
-  const handlePlayerSelect = (playerId: string) => {
+  // Stable per-position document id so each pick has ONE result doc that we
+  // overwrite (no duplicates) and the leaderboard can read immediately.
+  const resultDocId = (position: number) => `${sportType}_${draftYear}_${position}`;
+
+  const handlePlayerSelect = async (playerId: string) => {
     if (!editingPosition) return;
-    
-    // Update the pick
+    const position = editingPosition;
+    const docId = resultDocId(position);
+
+    // Update local state immediately
     const updatedPicks = [...actualPicks];
-    updatedPicks[editingPosition - 1] = {
-      position: editingPosition,
-      playerId,
-      sportType,
-      draftYear
-    };
-    
+    updatedPicks[position - 1] = { id: docId, position, playerId, sportType, draftYear };
     setActualPicks(updatedPicks);
-    
-    // Close the selection modal
     setEditingPosition(null);
     setSearchTerm('');
+
+    // AUTO-SAVE this pick to the database right away so the leaderboard scores it live
+    try {
+      setError('');
+      await setDoc(doc(db, 'draftResults', docId), {
+        position,
+        playerId,
+        sportType,
+        draftYear,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid || ''
+      });
+      setSuccess(`Pick ${position} saved`);
+    } catch (error) {
+      console.error('Error auto-saving pick:', error);
+      setError(`Failed to save pick ${position}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
-  
-  const handleClearPick = (position: number) => {
+
+  const handleClearPick = async (position: number) => {
     const updatedPicks = [...actualPicks];
     updatedPicks[position - 1] = null;
     setActualPicks(updatedPicks);
+
+    // Remove it from the database too
+    try {
+      setError('');
+      await deleteDoc(doc(db, 'draftResults', resultDocId(position)));
+    } catch (error) {
+      console.error('Error clearing pick:', error);
+      setError(`Failed to clear pick ${position}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
   
   const handleSaveActualPicks = async () => {
@@ -217,6 +241,7 @@ export default function GlobalDraftManager() {
         if (!pick) return null;
         
         const position = index + 1;
+        const docId = resultDocId(position);
         const pickData = {
           position,
           playerId: pick.playerId,
@@ -225,16 +250,10 @@ export default function GlobalDraftManager() {
           updatedAt: serverTimestamp(),
           updatedBy: user.uid
         };
-        
-        if (pick.id) {
-          // Update existing pick
-          await setDoc(doc(db, 'draftResults', pick.id), pickData);
-          return pick.id;
-        } else {
-          // Create new pick
-          const docRef = await addDoc(collection(db, 'draftResults'), pickData);
-          return docRef.id;
-        }
+
+        // Stable per-position id — overwrites the same doc, never duplicates
+        await setDoc(doc(db, 'draftResults', docId), pickData);
+        return docId;
       });
       
       await Promise.all(savePromises.filter(p => p !== null));
@@ -245,7 +264,7 @@ export default function GlobalDraftManager() {
       fetchData();
     } catch (error) {
       console.error('Error saving draft picks:', error);
-      setError('Failed to save draft picks. Please try again.');
+      setError(`Failed to save draft picks: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
   
